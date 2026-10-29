@@ -8,7 +8,7 @@ Personalised Wearable Insight & Evidence Agent. All data is synthetic, and nothi
 | **README with setup and run instructions** | [`README.md`](README.md) → *Quick start*: Git Bash/macOS and Windows PowerShell commands, configuration, and how to run the tests |
 | **Sample data** | [`docs/sample-data/`](docs/sample-data/): 4 users × 120 days as CSV, with a guide to each user and to User D's deliberate gaps, spike, conflicting values, wrong unit and injection note. It's reproducible: seed 42, `python -m scripts.export_sample_data` |
 | **Tests** | 193 backend (pytest: calculations, rules, ranking, evidence, LLM validation with Gemini mocked, every API endpoint), 106 frontend (Vitest), 10 end-to-end (Playwright against the real backend). See [`REPORT.md` §6](REPORT.md#6-acceptance-test-results) |
-| **Demo video** | **VIDEO LINK** (the file is [`docs/demo/lunapulse-demo.mp4`](docs/demo/lunapulse-demo.mp4), ≈ 4 min with voice-over) |
+| **Demo video** | Shared separately (≈ 4 min, with voice-over) |
 | **Code walkthrough** | [`REPORT.md`](REPORT.md): §3.4 candidate rules, [§4 how an insight is selected](REPORT.md#4-code-walkthrough-how-an-insight-is-selected), [§5 grounding the LLM response](REPORT.md#5-code-walkthrough-grounding-the-llm-response) |
 
 ## Task 3 requirements → implementation

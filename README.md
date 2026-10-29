@@ -179,7 +179,7 @@ Errors always look like `{"error": {"code", "message"}}`, with no stack traces o
 
 ## Demo video script (≈ 3 minutes)
 
-A recorded version is in [`docs/demo/lunapulse-demo.mp4`](docs/demo/lunapulse-demo.mp4) (≈ 4 min, spoken voice-over plus captions). It's recorded with Playwright on a temporary database, and you can record it again at any time:
+The recorded demo (≈ 4 min, spoken voice-over plus captions) is shared separately, not stored in this repository. It's recorded with Playwright on a temporary database, and you can record it again at any time:
 
 ```bash
 cd frontend

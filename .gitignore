@@ -37,3 +37,7 @@ Thumbs.db
 
 # Brainstorm mockups
 .superpowers/
+
+# Demo video is shared separately
+docs/demo/*.mp4
+docs/demo/*.webm
