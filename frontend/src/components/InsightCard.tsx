@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, EyeOff, MoreHorizontal, Shield, ShieldAlert, ShieldCheck, ThumbsDown } from "lucide-react";
+import { EyeOff, FileSearch, MoreHorizontal, Shield, ShieldAlert, ShieldCheck, ThumbsDown } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../api/client";
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EvidencePanel } from "./EvidencePanel";
 
 /** Confidence comes from the backend (D9). Each label pairs an icon with the word, never colour alone. */
 const CONFIDENCE = {
@@ -27,12 +26,12 @@ const FEEDBACK_TOAST: Record<FeedbackAction, string> = {
 interface Props {
   insight: Insight;
   onFeedback: (insightId: string, action: FeedbackAction) => Promise<void>;
+  onOpenEvidence: (insight: Insight) => void; // opens the evidence drawer
   position?: number; // 1-based place in the visible feed
   total?: number;
 }
 
-export function InsightCard({ insight, onFeedback, position, total }: Props) {
-  const [open, setOpen] = useState(false);
+export function InsightCard({ insight, onFeedback, onOpenEvidence, position, total }: Props) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const evidence = useAsync(() => api.evidence(insight.insight_id), [insight.insight_id]);
@@ -128,13 +127,12 @@ export function InsightCard({ insight, onFeedback, position, total }: Props) {
       {e.suggested_reflection && <p className="mt-3 text-sm text-muted-foreground italic">{e.suggested_reflection}</p>}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-          {open ? <ChevronUp aria-hidden /> : <ChevronDown aria-hidden />}
+        <Button variant="outline" size="sm" onClick={() => onOpenEvidence(insight)}>
+          <FileSearch aria-hidden />
           Why am I seeing this?
         </Button>
         {error && <p role="alert" className="text-xs text-negative">{error}</p>}
       </div>
-      {open && <div className="mt-3"><EvidencePanel insight={insight} /></div>}
     </Card>
   );
 }

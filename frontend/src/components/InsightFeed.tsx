@@ -1,12 +1,13 @@
 import { RefreshCw, Sparkles, TimerReset } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
-import type { FeedbackAction, Feed, Metric } from "../api/types";
+import type { FeedbackAction, Feed, Insight, Metric } from "../api/types";
 import { formatDateTime } from "../format";
 import { useAsync } from "../hooks/useAsync";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EvidenceDrawer } from "./EvidenceDrawer";
 import { InsightCard, InsightCardSkeleton } from "./InsightCard";
 import { EmptyState, ErrorState, LoadingState } from "./StateViews";
 
@@ -29,6 +30,10 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<ApiError | null>(null);
   const notGenerated = error?.code === "insights_not_generated";
+  // The insight whose evidence drawer is open. Closed whenever the date or the data changes, so evidence from
+  // another day or an outdated run is never shown (the workspace remounts on a user change).
+  const [evidenceFor, setEvidenceFor] = useState<Insight | null>(null);
+  useEffect(() => setEvidenceFor(null), [date, version]);
   const outdated = error?.code === "insights_outdated"; // the data changed after these insights were made (D30)
 
   useEffect(() => {
@@ -124,6 +129,7 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
               position={index + 1}
               total={visibleCount}
               onFeedback={sendFeedback}
+              onOpenEvidence={setEvidenceFor}
             />
           ))}
           {(feed.hidden_count > 0 || showHidden) && (
@@ -134,6 +140,7 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
           <CandidateSummary feed={feed} />
         </>
       )}
+      <EvidenceDrawer insight={evidenceFor} onClose={() => setEvidenceFor(null)} />
     </section>
   );
 }

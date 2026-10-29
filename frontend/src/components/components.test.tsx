@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { api, ApiError } from "../api/client";
 import { baselines, evidence, feed, insight, observations } from "../test/fixtures";
 import { DataQualityStatus } from "./DataQualityStatus";
+import { EvidenceDrawer } from "./EvidenceDrawer";
 import { InsightCard } from "./InsightCard";
 import { InsightFeed } from "./InsightFeed";
 import { MetricCard } from "./MetricCard";
@@ -172,47 +173,66 @@ describe("TrendChart", () => {
 
 describe("InsightCard and evidence", () => {
   it("shows the explanation, confidence and provider", () => {
-    render(<InsightCard insight={insight} onFeedback={vi.fn()} />);
+    render(<InsightCard insight={insight} onFeedback={vi.fn()} onOpenEvidence={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Sleep: shorter sleep duration" })).toBeInTheDocument();
     expect(screen.getByText("high confidence")).toBeInTheDocument();
     expect(screen.getByText("Template")).toBeInTheDocument();
     expect(screen.getByText("Sleep: 27 of 28 baseline days had valid data.")).toBeInTheDocument();
   });
 
-  it("'Why am I seeing this?' reveals the backend evidence and the rule", async () => {
+  it("why am I seeing this opens the evidence drawer", async () => {
     vi.spyOn(api, "evidence").mockResolvedValue(evidence);
-    render(<InsightCard insight={insight} onFeedback={vi.fn()} />);
+    const onOpenEvidence = vi.fn();
+    render(<InsightCard insight={insight} onFeedback={vi.fn()} onOpenEvidence={onOpenEvidence} />);
     await userEvent.click(screen.getByRole("button", { name: "Why am I seeing this?" }));
-    const panel = await screen.findByTestId("evidence-panel");
+    expect(onOpenEvidence).toHaveBeenCalledWith(insight);
+  });
+
+  it("the drawer shows the backend evidence, the rule and closes on Escape", async () => {
+    vi.spyOn(api, "evidence").mockResolvedValue(evidence);
+    const onClose = vi.fn();
+    render(<EvidenceDrawer insight={insight} onClose={onClose} />);
+    const drawer = await screen.findByRole("dialog", { name: "Sleep: shorter sleep duration" });
+    await within(drawer).findByText("-1.88 (robust_z)");
     expect(api.evidence).toHaveBeenCalledWith("ins_1");
-    await within(panel).findByText("5.17 h");
-    expect(within(panel).getByText("6.59 h")).toBeInTheDocument();
-    expect(within(panel).getByText("-1.88 (robust_z)")).toBeInTheDocument();
-    expect(within(panel).getByText(/deviation.sleep_hours.v1: \|change\| >= 1 hour/)).toBeInTheDocument();
-    expect(within(panel).getByText("06-29: 4.31 h")).toBeInTheDocument();
-    expect(within(panel).getByText(/Score 0.6697/)).toBeInTheDocument();
+    expect(within(drawer).getAllByText("5.17 h").length).toBeGreaterThan(0);
+    expect(within(drawer).getByText("6.59 h")).toBeInTheDocument();
+    expect(within(drawer).getByText(/deviation.sleep_hours.v1: \|change\| >= 1 hour/)).toBeInTheDocument();
+    expect(within(drawer).getByText("06-29: 4.31 h")).toBeInTheDocument();
+    expect(within(drawer).getByText(/Score 0.6697/)).toBeInTheDocument();
+    expect(within(drawer).getByText(/High confidence:/)).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("target date is highlighted in the supporting observations", async () => {
+    vi.spyOn(api, "evidence").mockResolvedValue(evidence);
+    render(<EvidenceDrawer insight={insight} onClose={vi.fn()} />);
+    const chart = await screen.findByRole("img", { name: "Supporting observations" });
+    const bars = chart.querySelectorAll("rect[data-date]");
+    expect(bars).toHaveLength(2);
+    expect(chart.querySelector('rect[data-date="2026-06-30"]')).toHaveAttribute("data-target", "true");
+    expect(chart.querySelector('rect[data-date="2026-06-29"]')).toHaveAttribute("data-target", "false");
   });
 
   it("trend evidence says a standardized score is not used, rather than unreliable", async () => {
     vi.spyOn(api, "evidence").mockResolvedValue([
       { ...evidence[0], comparison: "recent_7_day_median_vs_baseline", standardized_score: null, score_method: null },
     ]);
-    render(<InsightCard insight={insight} onFeedback={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: "Why am I seeing this?" }));
+    render(<EvidenceDrawer insight={insight} onClose={vi.fn()} />);
     expect(await screen.findByText("not used for 7-day trends")).toBeInTheDocument();
     expect(screen.queryByText(/too little variation/)).not.toBeInTheDocument();
   });
 
   it("shows an error if the evidence cannot load", async () => {
     vi.spyOn(api, "evidence").mockRejectedValue(new ApiError(500, "internal_error", "Something went wrong on the server."));
-    render(<InsightCard insight={insight} onFeedback={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: "Why am I seeing this?" }));
+    render(<EvidenceDrawer insight={insight} onClose={vi.fn()} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on the server.");
   });
 
   it("cards show the evidence summary from the evidence endpoint", async () => {
     vi.spyOn(api, "evidence").mockResolvedValue(evidence);
-    render(<InsightCard insight={insight} onFeedback={vi.fn()} />);
+    render(<InsightCard insight={insight} onFeedback={vi.fn()} onOpenEvidence={vi.fn()} />);
     const summary = await screen.findByTestId("evidence-summary");
     await within(summary).findByText("5.17 h");
     expect(within(summary).getByText("6.59 h")).toBeInTheDocument();
@@ -225,7 +245,7 @@ describe("InsightCard and evidence", () => {
     vi.spyOn(api, "evidence").mockResolvedValue(evidence);
     let finish: () => void = () => {};
     const onFeedback = vi.fn().mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
-    render(<><Toaster /><InsightCard insight={insight} onFeedback={onFeedback} /></>);
+    render(<><Toaster /><InsightCard insight={insight} onFeedback={onFeedback} onOpenEvidence={vi.fn()} /></>);
     await userEvent.click(screen.getByRole("button", { name: "Insight actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Not relevant" }));
     await userEvent.click(screen.getByRole("button", { name: "Insight actions" }));

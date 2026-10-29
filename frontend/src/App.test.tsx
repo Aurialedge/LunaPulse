@@ -47,6 +47,23 @@ describe("App shell", () => {
     expect(await screen.findAllByTestId("metric-skeleton")).toHaveLength(4);
   });
 
+  it("evidence drawer closes when the date changes", async () => {
+    render(<App />);
+    await userEvent.click(await screen.findByRole("button", { name: "Why am I seeing this?" }));
+    expect(await screen.findByRole("dialog", { name: "Sleep: shorter sleep duration" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Date", { selector: "input" }), { target: { value: "2026-06-20" } });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Sleep: shorter sleep duration" })).not.toBeInTheDocument());
+  });
+
+  it("evidence drawer closes when the user changes", async () => {
+    render(<App />);
+    await userEvent.click(await screen.findByRole("button", { name: "Why am I seeing this?" }));
+    expect(await screen.findByRole("dialog", { name: "Sleep: shorter sleep duration" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Synthetic user", { selector: "select" }), { target: { value: "user_b" } });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Sleep: shorter sleep duration" })).not.toBeInTheDocument());
+    await waitFor(() => expect(api.baselines).toHaveBeenCalledWith("user_b", "2026-06-30"));
+  });
+
   it("sidebar switches between overview and the data editor", async () => {
     render(<App />);
     await screen.findByRole("region", { name: "Metrics for the selected day" });
