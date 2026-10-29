@@ -83,6 +83,26 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Edit data" })).toBeInTheDocument();
   });
 
+  it("switching user with unsaved edits asks for confirmation", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<App />);
+    await screen.findByRole("region", { name: "Metrics for the selected day" });
+    await userEvent.click(screen.getByRole("tab", { name: "Edit data" }));
+    await userEvent.click(screen.getByTestId("cell-2026-06-30-sleep_hours").querySelector("button")!);
+    await userEvent.type(screen.getByRole("textbox"), "{Control>}a{/Control}6.6{Enter}");
+    expect(screen.getByText("1 unsaved change")).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Synthetic user"), "user_b");
+    expect(confirm).toHaveBeenCalled();
+    expect(screen.getByLabelText("Synthetic user")).toHaveValue("user_a");
+    expect(screen.getByText("1 unsaved change")).toBeInTheDocument();
+
+    // edits survive switching tabs
+    await userEvent.click(screen.getByRole("tab", { name: "Dashboard" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Edit data" }));
+    expect(screen.getByText("1 unsaved change")).toBeInTheDocument();
+  });
+
   it("shows an error state when the API is down", async () => {
     vi.spyOn(api, "users").mockRejectedValue(new ApiError(0, "network_error", "Could not reach the LunaPulse API."));
     render(<App />);

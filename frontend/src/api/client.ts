@@ -1,6 +1,7 @@
 // The only module that calls fetch. Components use these typed functions.
 import type {
   BaselinesResponse,
+  BatchCorrectionResponse,
   CorrectionResponse,
   EvidenceRecord,
   Feed,
@@ -82,4 +83,7 @@ export const api = {
     request<Note>(`/users/${userId}/notes`, post({ date, text })),
   correct: (userId: string, date: string, metric: Metric, value: number) =>
     request<CorrectionResponse>(`/users/${userId}/corrections`, post({ date, metric, value })),
+  /** Data editor: stores every edit or none, marks insights outdated, does not recalculate. */
+  correctBatch: (userId: string, corrections: { date: string; metric: Metric; value: number }[]) =>
+    request<BatchCorrectionResponse>(`/users/${userId}/corrections/batch`, post({ corrections })),
 };

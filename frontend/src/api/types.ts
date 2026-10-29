@@ -205,3 +205,10 @@ export interface CorrectionResponse {
   stale_run_count: number;
   feed: Feed;
 }
+
+export interface BatchCorrectionResponse {
+  user_id: string;
+  saved: number;
+  stale_run_count: number;
+  dates: string[];
+}

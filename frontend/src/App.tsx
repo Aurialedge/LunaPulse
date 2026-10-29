@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api } from "./api/client";
 import type { Metric, Scenario, User } from "./api/types";
 import { Controls } from "./components/Controls";
+import { DataEditor, type Edits } from "./components/DataEditor";
 import { DataQualityStatus } from "./components/DataQualityStatus";
 import { Header } from "./components/Header";
 import { InsightFeed } from "./components/InsightFeed";
@@ -109,10 +110,22 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
   // Bumped whenever this user's data changes, so every panel re-fetches from the backend.
   const [version, setVersion] = useState(0);
   const [insightMetrics, setInsightMetrics] = useState<Metric[]>([]);
+  // Unsaved data-editor changes. They live here so they survive switching tabs.
+  const [edits, setEdits] = useState<Edits>({});
   const baselines = useAsync(() => api.baselines(user.user_id, date), [user.user_id, date, version, user.data_end]);
   const observations = useAsync(() => api.observations(user.user_id, date), [user.user_id, date, version, user.data_end]);
 
+  /** True when it's fine to throw away unsaved edits (none, or the user confirms). */
+  function mayDiscardEdits(): boolean {
+    const count = Object.keys(edits).length;
+    if (count === 0) return true;
+    const ok = window.confirm(`You have ${count} unsaved change${count === 1 ? "" : "s"} in the data editor. Discard them?`);
+    if (ok) setEdits({});
+    return ok;
+  }
+
   async function applyScenario(scenario: string) {
+    if (!mayDiscardEdits()) return;
     await api.generateSimulation(user.user_id, scenario);
     setVersion((v) => v + 1);
     onDataRegenerated();
@@ -130,16 +143,27 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
         scenarios={scenarios}
         user={user}
         date={date}
-        onUserChange={onUserChange}
-        onDateChange={onDateChange}
+        onUserChange={(id) => mayDiscardEdits() && onUserChange(id)}
+        onDateChange={(d) => mayDiscardEdits() && onDateChange(d)}
         onApplyScenario={applyScenario}
       >
         <TabBar tab={tab} onTabChange={onTabChange} />
       </Controls>
 
       {tab === "edit" && (
-        <section id="panel-edit" role="tabpanel" aria-labelledby="tab-edit" className="card flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">Edit data</h2>
+        <section id="panel-edit" role="tabpanel" aria-labelledby="tab-edit" className="card">
+          {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
+          {observations.loading && !observations.data && <LoadingState label="Loading data…" />}
+          {observations.data && (
+            <DataEditor
+              observations={observations.data.observations}
+              dataStart={user.data_start}
+              edits={edits}
+              onEditsChange={setEdits}
+              onSaved={() => setVersion((v) => v + 1)}
+              userId={user.user_id}
+            />
+          )}
         </section>
       )}
 
