@@ -21,3 +21,8 @@ HTMLElement.prototype.getBoundingClientRect = function () {
   return { x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 256, width: 800, height: 256, toJSON() {} } as DOMRect;
 };
 
+// Radix UI (dialogs, menus, tabs) uses pointer-capture and scrollIntoView, which jsdom lacks.
+Element.prototype.scrollIntoView = function () {};
+Element.prototype.hasPointerCapture = () => false;
+Element.prototype.releasePointerCapture = function () {};
+

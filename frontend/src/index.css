@@ -1,120 +1,142 @@
 @import "tailwindcss";
 
-/* Dark "sporty" theme (D32). Every colour is a token; components use the generated utilities
-   (bg-surface, text-ink, border-line, text-steps, ...). Text tokens meet WCAG AA on --color-surface. */
+/* Light, production theme (design.md §3, D36). Token names follow shadcn/ui, so the ui/ components
+   use them directly: bg-background, bg-card, text-foreground, text-muted-foreground, border-border, bg-primary ...
+   Text tokens meet WCAG AA on white and on the page background. */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --color-surface: #0b1020;
-  --color-surface-raised: #131a2e;
-  --color-glass: rgb(255 255 255 / 0.045);
-  --color-glass-strong: rgb(255 255 255 / 0.08);
-  --color-line: rgb(255 255 255 / 0.1);
-  --color-ink: #e8ebf7;
-  --color-ink-soft: #b7bfd3;
-  --color-ink-muted: #8d96ae;
+  --color-background: #f7f8fa;
+  --color-foreground: #172033;
+  --color-card: #ffffff;
+  --color-card-foreground: #172033;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #172033;
+  --color-primary: #635bff;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f3f7;
+  --color-secondary-foreground: #172033;
+  --color-muted: #f1f3f7;
+  --color-muted-foreground: #687386;
+  --color-accent: #f1f3f7;
+  --color-accent-foreground: #172033;
+  --color-border: #e6e9ef;
+  --color-input: #e6e9ef;
+  --color-ring: #635bff;
 
-  --color-brand: #8b5cf6;
-  --color-brand-soft: #c4b5fd;
+  /* Status: always paired with an icon or text. Warning text uses the darker shade for contrast. */
+  --color-positive: #16845b;
+  --color-warning: #b7791f;
+  --color-warning-foreground: #8a5a12;
+  --color-negative: #c24141;
+  --color-neutral: #64748b;
 
-  /* One accent per metric */
-  --color-steps: #22d3ee;
-  --color-sleep: #a78bfa;
-  --color-rhr: #fb7185;
-  --color-hrv: #818cf8;
-
-  /* Status: always shown with an icon and a label */
-  --color-good: #34d399;
-  --color-warn: #fbbf24;
-  --color-alert: #fb7185;
+  /* One calm accent per metric (validated categorical hues) */
+  --color-steps: #635bff;
+  --color-sleep: #2a78d6;
+  --color-rhr: #eb6834;
+  --color-hrv: #1baf7a;
 
   /* Chart */
   --color-baseline: #64748b;
-  --color-grid: rgb(255 255 255 / 0.06);
+  --color-grid: #eef0f4;
+
+  /* Transitional aliases for components not yet rebuilt in this redesign (removed in Task 8) */
+  --color-surface: #f7f8fa;
+  --color-surface-raised: #ffffff;
+  --color-glass: #ffffff;
+  --color-glass-strong: #f1f3f7;
+  --color-line: #e6e9ef;
+  --color-ink: #172033;
+  --color-ink-soft: #3b4558;
+  --color-ink-muted: #687386;
+  --color-brand: #635bff;
+  --color-brand-soft: #635bff;
+  --color-good: #16845b;
+  --color-warn: #b7791f;
+  --color-alert: #c24141;
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  @apply min-h-screen text-ink antialiased;
-  background:
-    radial-gradient(1100px 600px at 8% -12%, rgb(124 58 237 / 0.3), transparent 60%),
-    radial-gradient(900px 520px at 105% -5%, rgb(14 165 233 / 0.14), transparent 60%),
-    var(--color-surface);
-  background-attachment: fixed;
+  @apply min-h-screen bg-background text-[15px] leading-relaxed text-foreground antialiased;
 }
 
 @layer components {
+  /* Transitional: older components still use these; rebuilt components use ui/ primitives. */
   .card {
-    @apply rounded-2xl border border-line bg-glass p-4 shadow-[0_8px_30px_rgb(0_0_0/0.25)] backdrop-blur-md;
+    @apply rounded-xl border border-border bg-card p-5 shadow-xs;
   }
   .btn-primary {
-    @apply inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-[0_0_20px_rgb(139_92_246/0.45)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-soft;
+    @apply inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none;
   }
   .btn-secondary {
-    @apply inline-flex items-center gap-1.5 rounded-xl border border-line bg-glass px-3 py-2 text-sm font-medium text-ink-soft transition hover:bg-glass-strong hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-soft;
+    @apply inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none;
   }
   .input {
-    @apply rounded-xl border border-line bg-surface-raised px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-soft;
+    @apply h-9 rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
   }
   .chip {
-    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium;
   }
   .eyebrow {
-    @apply text-[11px] font-semibold tracking-[0.08em] uppercase;
+    @apply text-xs font-medium text-muted-foreground;
   }
   .lp-enter {
-    animation: lp-fade-up 0.5s ease-out both;
+    animation: lp-fade-in 0.25s ease-out both;
   }
 }
 
-@keyframes lp-fade-up {
+/* Restrained motion (design.md §17): short fades and slides only. */
+.lp-fade-in {
+  animation: lp-fade-in 0.15s ease-out both;
+}
+.lp-pop-in {
+  animation: lp-pop-in 0.15s ease-out both;
+}
+.lp-slide-in-right {
+  animation: lp-slide-in-right 0.2s ease-out both;
+}
+.lp-slide-in-left {
+  animation: lp-slide-in-left 0.2s ease-out both;
+}
+
+@keyframes lp-fade-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
-  to {
-    opacity: 1;
-    transform: none;
+}
+@keyframes lp-pop-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--tw-translate-x, 0), var(--tw-translate-y, 0)) scale(0.97);
+  }
+}
+@keyframes lp-slide-in-right {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+}
+@keyframes lp-slide-in-left {
+  from {
+    transform: translateX(-16px);
+    opacity: 0;
   }
 }
 
-/* Goal rings fill from empty to the backend's progress value. */
+/* Transitional (until Task 4 rebuilds the chart) */
 .lp-ring {
-  animation: lp-ring 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: lp-fade-in 0.3s ease-out both;
 }
-
-@keyframes lp-ring {
-  from {
-    stroke-dashoffset: var(--ring-c);
-  }
-}
-
-/* Chart line draws itself in, left to right; the area under it fades in after.
-   A clip reveal works for any line length (a fixed stroke-dasharray could cut long, jagged lines). */
 .lp-draw {
-  animation: lp-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: lp-fade-in 0.3s ease-out both;
 }
-
-@keyframes lp-draw {
-  from {
-    clip-path: inset(0 100% 0 0);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
-}
-
 .lp-fade {
-  animation: lp-fade 1s ease-out 0.4s both;
-}
-
-@keyframes lp-fade {
-  from {
-    opacity: 0;
-  }
+  animation: lp-fade-in 0.3s ease-out both;
 }
 
 /* Anyone who asks for less motion gets none. */
