@@ -128,17 +128,6 @@ body {
   }
 }
 
-/* Transitional (until Task 4 rebuilds the chart) */
-.lp-ring {
-  animation: lp-fade-in 0.3s ease-out both;
-}
-.lp-draw {
-  animation: lp-fade-in 0.3s ease-out both;
-}
-.lp-fade {
-  animation: lp-fade-in 0.3s ease-out both;
-}
-
 /* Anyone who asks for less motion gets none. */
 @media (prefers-reduced-motion: reduce) {
   *,

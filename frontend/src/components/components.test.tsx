@@ -8,7 +8,7 @@ import { InsightCard } from "./InsightCard";
 import { InsightFeed } from "./InsightFeed";
 import { MetricCard } from "./MetricCard";
 import { NotesPanel } from "./NotesPanel";
-import { TrendChart } from "./TrendChart";
+import { TrendChart, TrendChartSkeleton } from "./TrendChart";
 
 const [steps, sleep, rhr, hrv] = baselines.metrics;
 
@@ -125,7 +125,7 @@ describe("TrendChart", () => {
   it("shows the backend observations in the table view, including gaps", async () => {
     render(<TrendChart observations={observations.observations} baselines={baselines.metrics} />);
     expect(screen.getByRole("heading", { name: "Steps, last 28 days" })).toBeInTheDocument();
-    expect(screen.getByText(/personal baseline median \(10,405 steps/)).toBeInTheDocument();
+    expect(screen.getByText(/Personal baseline: 10,405 steps/)).toBeInTheDocument();
     expect(screen.getByText(/Gaps: 1 day/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Show as table" }));
     const table = screen.getByRole("table");
@@ -134,23 +134,38 @@ describe("TrendChart", () => {
     expect(within(table).getByText("Steps: Missing")).toBeInTheDocument();
   });
 
-  it("chart line uses the metric accent and the draw-in class", async () => {
+  it("chart line uses the metric accent, without glow effects", async () => {
     const { container } = render(<TrendChart observations={observations.observations} baselines={baselines.metrics} />);
-    await userEvent.click(screen.getByRole("button", { name: "HRV" }));
-    // Recharts puts className on the line's <g>; the CSS animates the curve path inside it
-    const line = container.querySelector("g.lp-draw path.recharts-line-curve");
-    expect(line).not.toBeNull();
+    await userEvent.click(screen.getByRole("tab", { name: "HRV" }));
+    const line = container.querySelector("path.recharts-line-curve");
     expect(line).toHaveAttribute("stroke", "var(--color-hrv)");
+    expect(container.querySelector("filter")).toBeNull();
   });
 
-  it("switches metric and range", async () => {
+  it("metric tabs switch the chart, range buttons switch the window", async () => {
     render(<TrendChart observations={observations.observations} baselines={baselines.metrics} />);
-    await userEvent.click(screen.getByRole("button", { name: "HRV" }));
-    await userEvent.click(screen.getByRole("button", { name: "7 d" }));
+    expect(screen.getByRole("tab", { name: "Steps" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.click(screen.getByRole("tab", { name: "HRV" }));
+    expect(screen.getByRole("tab", { name: "HRV" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.click(screen.getByRole("button", { name: "7 days" }));
+    expect(screen.getByRole("button", { name: "7 days" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("heading", { name: "HRV, last 7 days" })).toBeInTheDocument();
     expect(screen.getByText(/No baseline line: not enough valid history/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Show as table" }));
     expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(8);
+  });
+
+  it("baseline explanation is available", async () => {
+    render(<TrendChart observations={observations.observations} baselines={baselines.metrics} />);
+    await userEvent.hover(screen.getByRole("button", { name: "About personal baselines" }));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Your personal baseline is calculated from your historical wearable data. Comparisons depend on the amount and quality of available data.",
+    );
+  });
+
+  it("chart skeleton while loading", () => {
+    render(<TrendChartSkeleton />);
+    expect(screen.getByTestId("chart-skeleton")).toBeInTheDocument();
   });
 });
 

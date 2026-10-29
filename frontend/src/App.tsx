@@ -10,7 +10,7 @@ import { TopBar, type DataStatus } from "./components/layout/TopBar";
 import { MetricCard, MetricCardSkeleton } from "./components/MetricCard";
 import { NotesPanel } from "./components/NotesPanel";
 import { ErrorState, LoadingState } from "./components/StateViews";
-import { TrendChart } from "./components/TrendChart";
+import { TrendChart, TrendChartSkeleton } from "./components/TrendChart";
 import { formatDate } from "./format";
 import { useAsync } from "./hooks/useAsync";
 
@@ -204,6 +204,7 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
 
         <div id="trends" className="scroll-mt-28">
           {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
+          {(observations.loading || baselines.loading) && !(observations.data && baselines.data) && <TrendChartSkeleton />}
           {observations.data && baselines.data && (
             <TrendChart observations={observations.data.observations} baselines={baselines.data.metrics} />
           )}
