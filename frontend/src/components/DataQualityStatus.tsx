@@ -13,14 +13,17 @@ export function DataQualityStatus({ metrics, date }: { metrics: MetricBaseline[]
   const Icon = ok ? CheckCircle2 : TriangleAlert;
 
   return (
-    <section aria-label="Data quality" className={`card flex items-start gap-3 ${ok ? "" : "border-amber-300 bg-amber-50"}`}>
-      <Icon className={`mt-0.5 size-5 shrink-0 ${ok ? "text-green-700" : "text-amber-700"}`} aria-hidden />
+    <section
+      aria-label="Data quality"
+      className={`card flex items-start gap-3 py-3 ${ok ? "" : "border-amber-400/30 bg-amber-400/10"}`}
+    >
+      <Icon className={`mt-0.5 size-5 shrink-0 ${ok ? "text-good" : "text-warn"}`} aria-hidden />
       <div className="text-sm">
         <p className="font-medium">
           {date}: {recorded} of {metrics.length} metrics recorded · {ok ? "data quality OK" : "data-quality issues"}
         </p>
         {!ok && (
-          <ul className="mt-1 list-disc pl-5 text-amber-900">
+          <ul className="mt-1 list-disc pl-5 text-amber-200">
             {issues.map((issue) => <li key={issue}>{issue}</li>)}
           </ul>
         )}

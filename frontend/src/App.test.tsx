@@ -73,6 +73,16 @@ describe("App", () => {
     await waitFor(() => expect(vi.mocked(api.feed).mock.calls.length).toBeGreaterThan(feedCalls));
   });
 
+  it("tabs switch between dashboard and data editor", async () => {
+    render(<App />);
+    await screen.findByRole("region", { name: "Metrics for the selected day" });
+    expect(screen.getByRole("tab", { name: "Dashboard" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.click(screen.getByRole("tab", { name: "Edit data" }));
+    expect(screen.getByRole("tab", { name: "Edit data" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("region", { name: "Metrics for the selected day" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Edit data" })).toBeInTheDocument();
+  });
+
   it("shows an error state when the API is down", async () => {
     vi.spyOn(api, "users").mockRejectedValue(new ApiError(0, "network_error", "Could not reach the LunaPulse API."));
     render(<App />);

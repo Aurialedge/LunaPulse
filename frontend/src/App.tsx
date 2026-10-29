@@ -1,3 +1,4 @@
+import { LayoutDashboard, Table2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "./api/client";
 import type { Metric, Scenario, User } from "./api/types";
@@ -22,12 +23,13 @@ export default function App() {
   const scenarios = useAsync(() => api.scenarios(), []);
   const [userId, setUserId] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("dashboard");
 
   const user = users.data?.find((u) => u.user_id === userId) ?? users.data?.[0] ?? null;
   const selectedDate = date ?? (user ? defaultDate(user) : null);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-10">
       <Header health={health.data} />
       <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
         {users.loading && !users.data && <LoadingState label="Loading synthetic users…" />}
@@ -40,6 +42,8 @@ export default function App() {
             user={user}
             date={selectedDate}
             scenarios={scenarios.data}
+            tab={tab}
+            onTabChange={setTab}
             onUserChange={(id) => {
               setUserId(id);
               setDate(null);
@@ -56,17 +60,52 @@ export default function App() {
   );
 }
 
+type Tab = "dashboard" | "edit";
+
+const TABS: { id: Tab; label: string; Icon: typeof LayoutDashboard }[] = [
+  { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { id: "edit", label: "Edit data", Icon: Table2 },
+];
+
+function TabBar({ tab, onTabChange }: { tab: Tab; onTabChange: (tab: Tab) => void }) {
+  return (
+    <div role="tablist" aria-label="Views" className="flex gap-1 border-t border-line pt-3">
+      {TABS.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          id={`tab-${id}`}
+          aria-selected={tab === id}
+          aria-controls={`panel-${id}`}
+          onClick={() => onTabChange(id)}
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-brand-soft ${
+            tab === id
+              ? "bg-violet-500/20 text-violet-100 shadow-[0_0_16px_rgb(139_92_246/0.35)]"
+              : "text-ink-soft hover:bg-glass-strong hover:text-ink"
+          }`}
+        >
+          <Icon className="size-4" aria-hidden />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 interface DashboardProps {
   users: User[];
   user: User;
   date: string;
   scenarios: Scenario[];
+  tab: Tab;
+  onTabChange: (tab: Tab) => void;
   onUserChange: (userId: string) => void;
   onDateChange: (date: string) => void;
   onDataRegenerated: () => void;
 }
 
-function Dashboard({ users, user, date, scenarios, onUserChange, onDateChange, onDataRegenerated }: DashboardProps) {
+function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChange, onDateChange, onDataRegenerated }: DashboardProps) {
   // Bumped whenever this user's data changes, so every panel re-fetches from the backend.
   const [version, setVersion] = useState(0);
   const baselines = useAsync(() => api.baselines(user.user_id, date), [user.user_id, date, version, user.data_end]);
@@ -93,32 +132,44 @@ function Dashboard({ users, user, date, scenarios, onUserChange, onDateChange, o
         onUserChange={onUserChange}
         onDateChange={onDateChange}
         onApplyScenario={applyScenario}
-      />
+      >
+        <TabBar tab={tab} onTabChange={onTabChange} />
+      </Controls>
 
-      {baselines.loading && !baselines.data && <LoadingState label="Calculating baselines…" />}
-      {baselines.error && <ErrorState error={baselines.error} onRetry={baselines.reload} />}
-      {baselines.data && (
-        <>
-          <DataQualityStatus metrics={baselines.data.metrics} date={baselines.data.date} />
-          <section aria-label="Metrics for the selected day" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {baselines.data.metrics.map((b) => (
-              <MetricCard key={b.metric} baseline={b} onCorrect={(value) => correct(b.metric, value)} />
-            ))}
-          </section>
-        </>
+      {tab === "edit" && (
+        <section id="panel-edit" role="tabpanel" aria-labelledby="tab-edit" className="card flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">Edit data</h2>
+        </section>
       )}
 
-      {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
-      {observations.data && baselines.data && (
-        <TrendChart observations={observations.data.observations} baselines={baselines.data.metrics} />
-      )}
+      {tab === "dashboard" && (
+        <div id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" className="flex flex-col gap-4">
+          {baselines.loading && !baselines.data && <LoadingState label="Calculating baselines…" />}
+          {baselines.error && <ErrorState error={baselines.error} onRetry={baselines.reload} />}
+          {baselines.data && (
+            <>
+              <DataQualityStatus metrics={baselines.data.metrics} date={baselines.data.date} />
+              <section aria-label="Metrics for the selected day" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {baselines.data.metrics.map((b) => (
+                  <MetricCard key={b.metric} baseline={b} onCorrect={(value) => correct(b.metric, value)} />
+                ))}
+              </section>
+            </>
+          )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <InsightFeed userId={user.user_id} date={date} version={version} />
+          {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
+          {observations.data && baselines.data && (
+            <TrendChart observations={observations.data.observations} baselines={baselines.data.metrics} />
+          )}
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <InsightFeed userId={user.user_id} date={date} version={version} />
+            </div>
+            <NotesPanel userId={user.user_id} date={date} version={version} />
+          </div>
         </div>
-        <NotesPanel userId={user.user_id} date={date} version={version} />
-      </div>
+      )}
     </>
   );
 }

@@ -1,11 +1,12 @@
 // Display formatting only. These functions never calculate statistics: they print numbers the backend sent.
 import type { Metric } from "./api/types";
 
-export const METRIC_INFO: Record<Metric, { label: string; unit: string }> = {
-  steps: { label: "Steps", unit: "steps" },
-  sleep_hours: { label: "Sleep", unit: "h" },
-  resting_heart_rate_bpm: { label: "Resting heart rate", unit: "bpm" },
-  hrv_ms: { label: "HRV", unit: "ms" },
+/** `accent` is the metric's colour token from index.css. */
+export const METRIC_INFO: Record<Metric, { label: string; unit: string; accent: string }> = {
+  steps: { label: "Steps", unit: "steps", accent: "var(--color-steps)" },
+  sleep_hours: { label: "Sleep", unit: "h", accent: "var(--color-sleep)" },
+  resting_heart_rate_bpm: { label: "Resting heart rate", unit: "bpm", accent: "var(--color-rhr)" },
+  hrv_ms: { label: "HRV", unit: "ms", accent: "var(--color-hrv)" },
 };
 
 const number = (value: number, maxDigits: number) =>
