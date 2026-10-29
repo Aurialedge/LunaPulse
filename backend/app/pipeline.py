@@ -59,6 +59,18 @@ def current_run(session: Session, user_id: str, target_date: date) -> InsightRun
     ).first()
 
 
+def has_stale_run(session: Session, user_id: str, target_date: date) -> bool:
+    """True when this day had insights that were made outdated by a data change (D30)."""
+    return session.scalars(
+        select(InsightRun.run_id).where(
+            InsightRun.user_id == user_id,
+            InsightRun.target_date == target_date,
+            InsightRun.rule_version == RULE_VERSION,
+            InsightRun.is_stale.is_(True),
+        )
+    ).first() is not None
+
+
 def previously_surfaced(session: Session, user_id: str, target_date: date) -> set[InsightKey]:
     """Insights selected in non-stale runs for the 3 days before the target date (D8)."""
     rows = session.execute(

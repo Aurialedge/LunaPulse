@@ -133,7 +133,7 @@ def test_regenerating_data_makes_insights_stale(client):
     generate_data(client)
     insight_id = generate_insights(client).json()["insights"][0]["insight_id"]
     generate_data(client, scenario="elevated_rhr")
-    assert_error(feed(client), 404, "insights_not_generated")
+    assert_error(feed(client), 404, "insights_outdated")
     assert client.get(f"/api/v1/insights/{insight_id}").json()["is_stale"] is True
     assert generate_insights(client).json()["insights"][0]["metrics"] == ["resting_heart_rate_bpm"]
 
@@ -212,7 +212,7 @@ def test_correction_marks_later_affected_runs_stale(client):
     generate_insights(client, day=END - timedelta(days=20))  # before the corrected day: unaffected
     client.post("/api/v1/users/user_a/corrections",
                 json={"date": corrected_day.isoformat(), "metric": "steps", "value": 12345.4})
-    assert_error(feed(client, day=END), 404, "insights_not_generated")
+    assert_error(feed(client, day=END), 404, "insights_outdated")
     assert feed(client, day=END - timedelta(days=20)).status_code == 200
     value = next(o for o in client.get("/api/v1/users/user_a/observations").json()["observations"]
                  if o["date"] == corrected_day.isoformat())["steps"]
@@ -312,3 +312,24 @@ def test_goal_progress_is_capped_and_null_without_a_value(client):
     generate_data(client, user_id="user_a", scenario="missing_data")
     sleep = client.get("/api/v1/users/user_a/baselines").json()["metrics"][1]
     assert sleep["observed_value"] is None and sleep["goal_progress_percent"] is None and sleep["goal_value"] == 7.5
+
+
+# --- outdated vs never generated (D30) ---
+
+
+def test_never_generated_day_is_not_outdated(client):
+    generate_data(client)
+    generate_insights(client, day=END)
+    assert_error(feed(client, day=END - timedelta(days=10)), 404, "insights_not_generated")
+
+
+def test_recalculating_an_outdated_day_returns_the_new_run(client):
+    generate_data(client)
+    first = generate_insights(client).json()
+    generate_data(client, scenario="elevated_rhr")
+    response = feed(client)
+    assert_error(response, 404, "insights_outdated")
+    assert END.isoformat() in response.json()["error"]["message"]
+    again = generate_insights(client).json()
+    assert again["run_id"] != first["run_id"]
+    assert feed(client).json()["run_id"] == again["run_id"]

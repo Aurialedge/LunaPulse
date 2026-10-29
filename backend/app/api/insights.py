@@ -14,7 +14,15 @@ from app.config import GOAL_PROGRESS_CAP
 from app.metrics import METRIC_ORDER, METRICS
 from app.models import Evidence, Feedback, Insight, InsightRun, Reading, User
 from app.observations import ReadingData, is_valid_reading
-from app.pipeline import HISTORY_DAYS, STALE_AFTER_DAYS, current_run, generate_run, load_observations, mark_runs_stale
+from app.pipeline import (
+    HISTORY_DAYS,
+    STALE_AFTER_DAYS,
+    current_run,
+    generate_run,
+    has_stale_run,
+    load_observations,
+    mark_runs_stale,
+)
 from app.schemas import (
     BaselinesOut,
     CandidateOut,
@@ -163,6 +171,10 @@ def get_feed(
     user = get_user_or_404(session, user_id)
     target = resolve_date(user, on_date)
     run = current_run(session, user_id, target)
+    if run is None and has_stale_run(session, user_id, target):
+        raise ApiError(
+            404, "insights_outdated", f"The data for {target} changed since its insights were made. Recalculate them."
+        )
     if run is None:
         raise ApiError(404, "insights_not_generated", f"No current insights for {target}. Generate them first.")
     return feed_out(session, run, include_hidden)
