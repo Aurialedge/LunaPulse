@@ -254,7 +254,7 @@ class FeedbackOut(BaseModel):
 class CorrectionIn(BaseModel):
     date: date
     metric: Literal["steps", "sleep_hours", "resting_heart_rate_bpm", "hrv_ms"]
-    value: float
+    value: float = Field(allow_inf_nan=False)  # JSON NaN / Infinity are rejected with 422, not a crash
 
 
 class CorrectionOut(BaseModel):

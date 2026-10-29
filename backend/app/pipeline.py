@@ -7,7 +7,7 @@ observations / baselines / candidates / ranking. This module does the I/O around
 import uuid
 from datetime import date, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.candidates import Goals, generate_candidates
@@ -106,9 +106,10 @@ def generate_run(
         existing.is_stale = True
 
     # 2–6. history -> validated observations -> baselines and deviations (inside generate_candidates)
-    observations = load_observations(
-        session, user.user_id, target_date - timedelta(days=HISTORY_DAYS), target_date + timedelta(days=1)
-    )
+    history_start, history_end = target_date - timedelta(days=HISTORY_DAYS), target_date + timedelta(days=1)
+    # Newest reading seen at the start: if data is saved while Gemini is still explaining, the run is outdated.
+    watermark = session.scalar(select(func.max(Reading.id)).where(Reading.user_id == user.user_id)) or 0
+    observations = load_observations(session, user.user_id, history_start, history_end)
     # 7. candidates
     candidates = generate_candidates(
         observations, target_date, Goals(user.activity_goal_steps, user.sleep_target_hours)
@@ -135,6 +136,14 @@ def generate_run(
     )
 
     # 14. persist the run, the insights, their evidence and the provenance
+    changed_meanwhile = session.scalar(
+        select(func.count(Reading.id)).where(
+            Reading.user_id == user.user_id,
+            Reading.id > watermark,
+            Reading.date >= history_start,
+            Reading.date <= history_end,
+        )
+    )
     insight_ids = {id(item): llm.insight_id for item, llm in selected}
     run = InsightRun(
         run_id=run_id,
@@ -143,7 +152,7 @@ def generate_run(
         rule_version=RULE_VERSION,
         provider=result.provider,
         fallback_reason=result.fallback_reason,
-        is_stale=False,
+        is_stale=bool(changed_meanwhile),  # built from data that changed before it was saved (D30)
         tool_calls=result.tool_calls,
         candidates=[
             {

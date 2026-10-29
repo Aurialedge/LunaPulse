@@ -400,3 +400,29 @@ def test_batch_invalid_inputs(client):
     assert_error(batch(client, [{"date": day, "metric": "steps", "value": 1}], user_id="nobody"), 404, "user_not_found")
     assert_error(batch(client, [{"date": "2020-01-01", "metric": "steps", "value": 1}]), 422, "invalid_value")
     assert_error(batch(client, [{"date": day, "metric": "weight", "value": 1}]), 422, "validation_error")
+
+
+# --- review fixes ---
+
+
+def test_data_saved_while_explaining_makes_the_new_run_outdated(client):
+    """A save that lands while Gemini is still explaining must not leave a 'current' run built from old data."""
+    generate_data(client)
+
+    def answer_after_a_concurrent_save(payload):
+        # the user saves an edit in the data editor while this generation is still running
+        assert batch(client, [{"date": END.isoformat(), "metric": "sleep_hours", "value": 7.4}]).status_code == 200
+        return grounded_answer(payload)
+
+    client.app.state.chat_factory = lambda: PayloadAwareChat(answer=answer_after_a_concurrent_save)
+    assert generate_insights(client).status_code == 200
+    assert_error(feed(client), 404, "insights_outdated")
+
+
+def test_correction_values_must_be_finite(client):
+    generate_data(client)
+    raw = '{"date": "%s", "metric": "steps", "value": NaN}' % END.isoformat()
+    headers = {"Content-Type": "application/json"}
+    assert_error(client.post("/api/v1/users/user_a/corrections", content=raw, headers=headers), 422, "validation_error")
+    raw_batch = '{"corrections": [{"date": "%s", "metric": "steps", "value": Infinity}]}' % END.isoformat()
+    assert_error(client.post("/api/v1/users/user_a/corrections/batch", content=raw_batch, headers=headers), 422, "validation_error")
