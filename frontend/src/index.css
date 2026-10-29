@@ -92,6 +92,31 @@ body {
   }
 }
 
+/* Chart line draws itself in; the area under it fades in after. */
+.lp-draw path.recharts-line-curve {
+  stroke-dasharray: 4000;
+  animation: lp-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes lp-draw {
+  from {
+    stroke-dashoffset: 4000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.lp-fade {
+  animation: lp-fade 1s ease-out 0.4s both;
+}
+
+@keyframes lp-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Anyone who asks for less motion gets none. */
 @media (prefers-reduced-motion: reduce) {
   *,

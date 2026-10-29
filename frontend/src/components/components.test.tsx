@@ -116,6 +116,15 @@ describe("TrendChart", () => {
     expect(within(table).getByText("Steps: Missing")).toBeInTheDocument();
   });
 
+  it("chart line uses the metric accent and the draw-in class", async () => {
+    const { container } = render(<TrendChart observations={observations.observations} baselines={baselines.metrics} />);
+    await userEvent.click(screen.getByRole("button", { name: "HRV" }));
+    // Recharts puts className on the line's <g>; the CSS animates the curve path inside it
+    const line = container.querySelector("g.lp-draw path.recharts-line-curve");
+    expect(line).not.toBeNull();
+    expect(line).toHaveAttribute("stroke", "var(--color-hrv)");
+  });
+
   it("switches metric and range", async () => {
     render(<TrendChart observations={observations.observations} baselines={baselines.metrics} />);
     await userEvent.click(screen.getByRole("button", { name: "HRV" }));
