@@ -8,9 +8,9 @@ LunaPulse turns simulated wearable readings into **at most three daily insights*
 
 | Result | |
 |---|---|
-| Backend tests | **181 passed** (142 unit, 39 API integration), Gemini always mocked |
-| Frontend tests | **32 passed** (Vitest + React Testing Library) |
-| End-to-end tests | **8 passed** (Playwright, real backend in fallback mode, real UI), stable over 3 consecutive runs |
+| Backend tests | **189 passed** (142 unit, 47 API integration), Gemini always mocked |
+| Frontend tests | **51 passed** (Vitest + React Testing Library) |
+| End-to-end tests | **9 passed** (Playwright, real backend in fallback mode, real UI), stable over repeated runs |
 | Live Gemini | full tool loop verified with a real key: tool call → grounded JSON → validated → stored (§7) |
 | Type-check / lint / build | clean |
 
@@ -118,9 +118,9 @@ All suites run without a Gemini key. Gemini is replaced by scripted fakes ([`tes
 | Suite | Count | Result |
 |---|---|---|
 | `backend/tests/unit` (simulation 21, observations 13, baselines 14, candidates 42, ranking 10, evidence 10, tools 5, explanations 27) | 142 | ✅ pass |
-| `backend/tests/integration` (data API 18, analytics API 21) | 39 | ✅ pass |
-| `frontend/src/**/*.test.ts(x)` (client 4, components 23, App 5) | 32 | ✅ pass |
-| `frontend/e2e` (Playwright, real backend + UI) | 8 | ✅ pass ×3 runs |
+| `backend/tests/integration` (data API 18, analytics API 29) | 47 | ✅ pass |
+| `frontend/src/**/*.test.ts(x)` (client 4, components 30, data editor 10, App 7) | 51 | ✅ pass |
+| `frontend/e2e` (Playwright, real backend + UI) | 9 | ✅ pass, repeated runs |
 
 ### PRD §15 checklist
 
@@ -167,7 +167,7 @@ All suites run without a Gemini key. Gemini is replaced by scripted fakes ([`tes
 | ≤ 3 ranked insights; headline, explanation, evidence, confidence | feed endpoint + `InsightCard` | ✅ |
 | "Why am I seeing this?" shows the data and the rule | `EvidencePanel`; Vitest + e2e | ✅ |
 | Dismiss / irrelevant, retained | `test_feedback_hides_the_insight_and_is_kept`; e2e dismiss | ✅ |
-| Correction recomputes; outdated insight not shown | `test_correction_recomputes_and_removes_the_outdated_insight`, `test_correction_marks_later_affected_runs_stale`; e2e correction | ✅ |
+| Correction recomputes; outdated insight not shown | `test_correction_recomputes_and_removes_the_outdated_insight`, `test_correction_marks_later_affected_runs_stale`, batch editor `test_batch_saves_all_edits_marks_stale_and_does_not_regenerate`, `test_recalculating_an_outdated_day_returns_the_new_run`; e2e correction + "editing the table marks insights outdated" | ✅ |
 | Gaps, a one-day spike, conflicting values | User D; `test_spike_is_qualified_and_conflict_gives_a_warning` | ✅ |
 | Suppress or qualify low-coverage or inconsistent evidence | confidence rules; conflicts → warning; spike qualified | ✅ |
 | Consistent dates and timezones | user-local dates, `today` from the backend; `test_local_today_uses_the_users_timezone` | ✅ |
@@ -177,6 +177,10 @@ All suites run without a Gemini key. Gemini is replaced by scripted fakes ([`tes
 
 ### PRD definition of done
 1. Documented start commands ✅ (README) · 2. Four distinct users ✅ · 3. ≥ 90 days ✅ (120) · 4. Reproducible baselines ✅ · 5. Candidates and ranking independent of the LLM ✅ · 6. Traceable evidence ✅ · 7. Gemini works when configured ✅ (§7) · 8. Fallback without Gemini ✅ · 9. Dashboard shows live backend data ✅ · 10. Automated tests pass ✅ · 11. README covers architecture, algorithms, configuration, limitations and scenarios ✅
+
+## 6b. Dashboard and data editor
+
+The UI is dark and sporty (D32): glass cards, goal rings for steps and sleep, and glowing trend lines that draw themselves in. It's accessible: AA-contrast tokens, icons with labels for status, keyboard-reachable tabs and table cells, and no motion under `prefers-reduced-motion`. Goal-ring progress is computed by the backend (D31). The **Edit data** tab lets a reviewer change any of the last 28 days. Saving is all or nothing (`/corrections/batch`, D29) and marks every affected run stale; the feed then answers `insights_outdated` (D30) and offers **Recalculate insights**, so an outdated insight is never shown (Part B §5).
 
 ## 7. Live Gemini verification
 

@@ -69,14 +69,23 @@ Every threshold and weight is a named constant in [`backend/app/config.py`](back
 ## Tests
 
 ```bash
-cd backend && pytest                 # 181 tests: unit + API integration, Gemini always mocked
-cd frontend && npm test              # 32 Vitest + React Testing Library tests
+cd backend && pytest                 # 189 tests: unit + API integration, Gemini always mocked
+cd frontend && npm test              # 51 Vitest + React Testing Library tests
 cd frontend && npx playwright install chromium && npm run test:e2e
-                                     # 8 Playwright tests: real backend (fallback mode, temp DB) + real UI
+                                     # 9 Playwright tests: real backend (fallback mode, temp DB) + real UI
 cd frontend && npm run build && npm run lint
 ```
 
 No test needs a Gemini key. The e2e suite starts its own backend on port 8001 with `GEMINI_API_KEY=""` and a temporary database, and its own Vite server on 5174, and checks that UI values equal API values.
+
+## Using the dashboard
+
+The UI is dark and sporty (D32): goal rings for steps and sleep, glowing animated trend lines, and glass cards. Animations switch off when your device asks for reduced motion.
+
+- **Dashboard tab:** the day's four metrics against the personal baseline. Each tile glows when a current insight is about it. Below are the trend chart (metric and 7/28-day switches, table view), the top insights with **Why am I seeing this?**, and notes.
+- **Edit data tab:** the 28 days ending at the selected date. Click any value to change it or fill a gap. Edited cells glow until you **Save changes**, which stores them all at once and checks each against plausible ranges (D29). Affected insights become *outdated*: the feed hides them and offers **Recalculate insights**. A value can be changed but not cleared back to missing.
+- **Pencil on a tile:** the quick single correction; it recalculates that day straight away (D18).
+- Data always comes from the simulator. There's no upload, by design (PRD: synthetic data only).
 
 ## Demo users and scenarios
 
@@ -122,11 +131,12 @@ Choose a scenario in the UI (**Regenerate data**) or via `POST /api/v1/simulatio
 | POST | `/api/v1/simulation/generate` | regenerate a user's data with a scenario |
 | GET | `/api/v1/users/{id}/baselines?date` | baseline statistics per metric |
 | POST | `/api/v1/users/{id}/insights/generate` | run the pipeline (idempotent; `force` to rerun) |
-| GET | `/api/v1/users/{id}/insights?date` | the day's feed (404 `insights_not_generated` before generation) |
+| GET | `/api/v1/users/{id}/insights?date` | the day's feed (404 `insights_not_generated` before generation, `insights_outdated` after its data changed) |
 | GET | `/api/v1/insights/{id}` · `/evidence` | one insight · its evidence records |
 | POST | `/api/v1/insights/{id}/feedback` | `dismissed` or `irrelevant` (hides it, keeps the record) |
 | GET/POST | `/api/v1/users/{id}/notes` | untrusted user notes |
 | POST | `/api/v1/users/{id}/corrections` | correct a value → affected insights go stale → the day is recomputed |
+| POST | `/api/v1/users/{id}/corrections/batch` | data editor: save many edits at once (all or nothing) → affected insights go stale, no recomputation |
 
 Errors always look like `{"error": {"code", "message"}}`, with no stack traces or provider details. Examples: [`API_EXAMPLES.md`](API_EXAMPLES.md).
 
@@ -146,7 +156,8 @@ Errors always look like `{"error": {"code", "message"}}`, with no stack traces o
 3. **Evidence (40 s):** click **Why am I seeing this?** on the sleep card. Show the day's value, the 28-day median, the difference, the robust z, the rule and threshold, and the supporting days. Open the trend chart and switch to Sleep to see the drop against the dashed baseline line.
 4. **Correction (40 s):** click the pencil on the Sleep card, enter the baseline value (≈ 6.6), and save. The card shows "Corrected by you", the old insight disappears, and the feed is recomputed without the sleep deviation.
 5. **Messy data and safety (30 s):** select **User D** and show the injection note. Generate insights and show that no "HRV improved 40%" insight appears. Pick the spike date (3 days back) to show the low-confidence "may be a measurement artefact" card.
-6. **Feedback (10 s):** press **Dismiss** on a card, then show the hidden-insights toggle.
+6. **Edit data (30 s):** open the **Edit data** tab, change two cells (they glow), press **Save changes**, return to **Dashboard**: "Data changed since these insights were made" → **Recalculate insights**.
+7. **Feedback (10 s):** press **Dismiss** on a card, then show the hidden-insights toggle.
 
 ## Project layout
 

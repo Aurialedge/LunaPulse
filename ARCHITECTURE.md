@@ -141,12 +141,13 @@ Every threshold is configurable. They're illustrative values, not medical thresh
 | GET | `/simulation/scenarios` | scenario catalog |
 | GET | `/users/{user_id}/baselines?date=` | per metric: today's value, baseline statistics, deviation, day-over-day, week-over-week, status |
 | POST | `/users/{user_id}/insights/generate` | `{date, force?}` (idempotent, D11) |
-| GET | `/users/{user_id}/insights?date=` | feed: latest non-stale run, visible insights, `hidden_count`, provider (404 `insights_not_generated`) |
+| GET | `/users/{user_id}/insights?date=` | feed: latest non-stale run, visible insights, `hidden_count`, provider (404 `insights_outdated` if the day's runs went stale, D30; else 404 `insights_not_generated`) |
 | GET | `/insights/{insight_id}` | insight plus explanation |
 | GET | `/insights/{insight_id}/evidence` | evidence records |
 | POST | `/insights/{insight_id}/feedback` | `{action}` (D17) |
 | GET / POST | `/users/{user_id}/notes` | list (`?date=`) / add a note (D15) |
 | POST | `/users/{user_id}/corrections` | `{date, metric, value}` → stale + regenerate (D18) |
+| POST | `/users/{user_id}/corrections/batch` | `{corrections: [...]}` 1–112, all or nothing → stale, **no** regeneration (D29) |
 
 Errors look like `{"error": {"code": "...", "message": "..."}}` with 400/404/422/500. No stack traces, secrets, or provider messages.
 
@@ -156,14 +157,15 @@ Errors look like `{"error": {"code": "...", "message": "..."}}` with 400/404/422
 api/        client.ts (typed fetch wrapper), types.ts (mirrors backend schemas)
 hooks/      useAsync.ts
 format.ts   display formatting only (units, separators, flag text); never statistics
-components/ Header (disclaimer), Controls (user · date · scenario), MetricCard (+ correct value),
-            TrendChart (metric switch, 7/28 d, baseline line), InsightFeed, InsightCard
+components/ Header (logo, disclaimer), Controls (user · date · scenario + tab bar), MetricCard (goal ring,
+            highlight, + correct value), TrendChart (glowing animated line, metric switch, 7/28 d, baseline
+            line), DataEditor (28-day table, batch save), InsightFeed (+ outdated state), InsightCard
             (headline, explanation, confidence, dismiss/irrelevant, "Why am I seeing this?" → EvidencePanel),
             NotesPanel, DataQualityStatus, ProviderBadge, StateViews (loading/empty/error/insufficient)
-App.tsx     page composition, selected user/date state
+App.tsx     page composition: selected user/date, Dashboard / Edit data tabs, unsaved edits
 test/       Vitest setup and fixtures
 ```
 
 `frontend/e2e/` holds the Playwright tests. `playwright.config.ts` starts the real backend in fallback mode (temp DB, port 8001) and Vite (port 5174).
 
-Every number on screen comes from an API response. The frontend never computes statistics.
+Every number on screen comes from an API response, including goal-ring progress (D31). The frontend never computes statistics. Theme tokens live in `index.css` (`@theme`). Every animation is disabled under `prefers-reduced-motion`.

@@ -99,7 +99,7 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
           <caption className="sr-only">Daily values, newest first</caption>
           <thead className="sticky top-0 z-10 bg-surface-raised text-xs text-ink-muted">
             <tr>
-              <th className="px-3 py-2">Date</th>
+              <th className="whitespace-nowrap px-3 py-2">Date</th>
               {METRICS.map((m) => (
                 <th key={m} className="px-3 py-2">
                   <span className="inline-flex items-center gap-1.5">
@@ -113,7 +113,7 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
           <tbody>
             {rows.map((o) => (
               <tr key={o.date} className="border-t border-line">
-                <th scope="row" className="px-3 py-1.5 font-normal tabular-nums text-ink-soft">{o.date}</th>
+                <th scope="row" className="whitespace-nowrap px-3 py-1.5 font-normal tabular-nums text-ink-soft">{o.date}</th>
                 {METRICS.map((m) => {
                   const k = key(o.date, m);
                   const changed = k in edits;

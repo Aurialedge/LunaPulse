@@ -339,3 +339,67 @@ GET /api/v1/users/user_b/insights?date=2020-01-01
 }
 ```
 
+## Data editor (D29–D31)
+
+### Save several edits at once (data editor; no recalculation)
+```http
+POST /api/v1/users/user_b/corrections/batch
+
+{"corrections": [{"date": "2026-06-30", "metric": "sleep_hours", "value": 6.6}, {"date": "2026-06-29", "metric": "steps", "value": 9000}]}
+```
+`200`
+```json
+{
+  "user_id": "user_b",
+  "saved": 2,
+  "stale_run_count": 1,
+  "dates": [
+    "2026-06-29",
+    "2026-06-30"
+  ]
+}
+```
+
+### Feed after the data changed
+```http
+GET /api/v1/users/user_b/insights?date=2026-06-30
+```
+`404`
+```json
+{
+  "error": {
+    "code": "insights_outdated",
+    "message": "The data for 2026-06-30 changed since its insights were made. Recalculate them."
+  }
+}
+```
+
+### A batch with one invalid value stores nothing
+```http
+POST /api/v1/users/user_b/corrections/batch
+
+{"corrections": [{"date": "2026-06-30", "metric": "steps", "value": 5000}, {"date": "2026-06-30", "metric": "sleep_hours", "value": 30}]}
+```
+`422`
+```json
+{
+  "error": {
+    "code": "invalid_value",
+    "message": "2026-06-30 sleep_hours: Sleep must be between 0 and 24 hours."
+  }
+}
+```
+
+### Baselines include goal progress (steps shown)
+```http
+GET /api/v1/users/user_b/baselines?date=2026-06-30
+```
+`200`
+```json
+{
+  "metric": "steps",
+  "observed_value": 8579.0,
+  "goal_value": 9000.0,
+  "goal_progress_percent": 95.3
+}
+```

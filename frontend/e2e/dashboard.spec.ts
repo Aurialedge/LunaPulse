@@ -140,7 +140,8 @@ test("scenario selection regenerates data and refreshes the dashboard", async ({
 test("stable data shows an empty feed instead of forced insights", async ({ page, request }) => {
   await regenerate(request, "user_a", "stable_baseline");
   await openUser(page, "user_a");
-  await page.getByRole("button", { name: "Generate insights" }).click();
+  // an earlier test generated insights for this day, so after regenerating they are outdated (D30)
+  await page.getByRole("button", { name: /^(Generate|Recalculate) insights$/ }).click();
   await expect(page.getByText("Nothing notable for this day")).toBeVisible();
 });
 
@@ -165,3 +166,44 @@ test("the injection note is shown as data and adds no insight or numbers", async
   await page.getByRole("button", { name: "Save note" }).click();
   await expect(page.getByText("Long flight today")).toBeVisible();
 });
+
+test("editing the table marks insights outdated and recalculation updates them", async ({ page, request }) => {
+  await regenerate(request, "user_b", "reduced_sleep");
+  const date = await selectedDate(request, "user_b");
+  await request.post(`${API}/users/user_b/insights/generate`, { data: { date } });
+  const sleep = (await baselines(request, "user_b", date)).find((m) => m.metric === "sleep_hours")!;
+  const before: { insights: { category: string; metrics: string[] }[] } = await (
+    await request.get(`${API}/users/user_b/insights?date=${date}`)
+  ).json();
+  expect(before.insights.some((i) => i.category === "deviation" && i.metrics.includes("sleep_hours"))).toBe(true);
+
+  await openUser(page, "user_b");
+  await page.getByRole("tab", { name: "Edit data" }).click();
+  const editCell = async (day: string, metric: string, label: string, value: string) => {
+    await page.getByRole("button", { name: `Edit ${label} on ${day}` }).click();
+    await page.getByRole("textbox", { name: `${label} on ${day}` }).fill(value);
+    await page.getByRole("textbox", { name: `${label} on ${day}` }).press("Enter");
+    await expect(page.getByTestId(`cell-${day}-${metric}`)).toHaveAttribute("data-changed", "true");
+  };
+  const yesterday = new Date(`${date}T00:00:00Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  await editCell(date, "sleep_hours", "Sleep", String(sleep.median));
+  await editCell(yesterday.toISOString().slice(0, 10), "steps", "Steps", "9000");
+  await expect(page.getByText("2 unsaved changes")).toBeVisible();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText(/unsaved change/)).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Dashboard" }).click();
+  await expect(page.getByText("Data changed since these insights were made")).toBeVisible();
+  await expect(page.getByTestId("insight-card")).toHaveCount(0); // outdated insights are never shown
+  await page.getByRole("button", { name: "Recalculate insights" }).click();
+  // the button reads "Regenerate" only once the new run exists and the feed has reloaded
+  await expect(page.getByRole("button", { name: "Regenerate insights" })).toBeVisible();
+  await expect(page.getByText("Data changed since these insights were made")).toHaveCount(0);
+
+  const after = await (await request.get(`${API}/users/user_b/insights?date=${date}`)).json();
+  await expect(page.getByTestId("insight-card")).toHaveCount(after.insights.length);
+  expect(after.insights.some((i: { category: string; metrics: string[] }) => i.category === "deviation" && i.metrics.includes("sleep_hours"))).toBe(false);
+  await expect(page.getByTestId("metric-sleep_hours-value")).toHaveText(shown("sleep_hours", sleep.median));
+});
+

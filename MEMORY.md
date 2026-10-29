@@ -52,4 +52,8 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - Phase 5: `npm run test:e2e` starts its own backend (port 8001, temp DB, `GEMINI_API_KEY=""`) and Vite (5174), so dev servers on 8000/5173 can keep running. On Windows the Python path in `playwright.config.ts` must use backslashes (`cmd`).
 - `requirements.txt` pins exactly what's tested (pydantic 2.14.1 came in with google-genai 2.30). Check a change with a fresh venv: `python -m venv x && x/Scripts/pip install -r requirements.txt && x/Scripts/python -m pytest`.
 - API examples in `API_EXAMPLES.md` were captured from a fallback-mode TestClient (seed 42, end 2026-06-30). Regenerate them if the response shapes change.
+- 2026-10-29 dark UI + data editor (branch `feature/dark-ui-data-editor`; spec and plan in `docs/superpowers/`): new endpoint `/corrections/batch` (no regeneration), feed `insights_outdated`, `goal_progress_percent` on baselines; frontend tabs Dashboard / Edit data, `DataEditor.tsx`. Decisions D29–D32.
+- Gotcha: a backend started before a schema change keeps serving the old shape (uvicorn without `--reload`). New fields arrive as `undefined` in the UI (e.g. the goal ring got NaN). Restart the backend after backend changes.
+- Gotcha: Recharts in jsdom renders no SVG unless `getBoundingClientRect` is stubbed (see `src/test/setup.ts`). Recharts puts `className` on the series `<g>`, not the path.
+- Gotcha: Playwright MCP element screenshots time out on blurred glass cards ("waiting for element to be stable"). Use viewport screenshots.
 
