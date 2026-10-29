@@ -92,18 +92,18 @@ body {
   }
 }
 
-/* Chart line draws itself in; the area under it fades in after. */
-.lp-draw path.recharts-line-curve {
-  stroke-dasharray: 4000;
+/* Chart line draws itself in, left to right; the area under it fades in after.
+   A clip reveal works for any line length (a fixed stroke-dasharray could cut long, jagged lines). */
+.lp-draw {
   animation: lp-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes lp-draw {
   from {
-    stroke-dashoffset: 4000;
+    clip-path: inset(0 100% 0 0);
   }
   to {
-    stroke-dashoffset: 0;
+    clip-path: inset(0 0 0 0);
   }
 }
 

@@ -139,3 +139,9 @@ The "Edit data" tab shows the 28 days ending at the selected date, and any cell 
 
 ## D32. Dark, sporty theme only *(user)*
 The UI was restyled in the "dark, sporty" direction the user picked from three mockups: navy with a violet glow, glass cards, goal rings, and glowing animated chart lines. It's dark-only, with no light theme or toggle. Animations are disabled under `prefers-reduced-motion`, and text meets WCAG AA on the navy surface.
+
+## D33. Which metric tiles glow
+A metric tile gets its glowing border when a **current** insight is about that metric (set membership on the feed's `metrics`). It does not glow merely because the day deviates. — The spec said "a tile with a target-day deviation"; deciding "notable" from thresholds in the browser would break golden rule 4, and tying the glow to the ranked insights keeps tiles and feed consistent. When insights are outdated or not generated, no tile glows.
+
+## D34. Runs that overlap a data change are born outdated
+`generate_run` notes the user's newest reading id before loading data. If any reading in the run's history window is saved before the run is committed (e.g. a data-editor save while Gemini is still explaining), the run is stored with `is_stale = true`, so the feed reports `insights_outdated` instead of showing insights built from old data. The UI also keeps both tabs mounted, so a running recalculation stays visible, and disables **Save changes** while one runs.

@@ -103,6 +103,22 @@ describe("App", () => {
     expect(screen.getByText("1 unsaved change")).toBeInTheDocument();
   });
 
+  it("a running recalculation survives switching tabs and blocks saving edits", async () => {
+    vi.spyOn(api, "feed").mockRejectedValue(new ApiError(404, "insights_not_generated", "No current insights."));
+    vi.spyOn(api, "generateInsights").mockReturnValue(new Promise(() => {})); // still running
+    render(<App />);
+    await userEvent.click(await screen.findByRole("button", { name: "Generate insights" }));
+    expect(screen.getByRole("button", { name: "Generating…" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Edit data" }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit Sleep on 2026-06-30" }));
+    await userEvent.type(screen.getByRole("textbox"), "{Control>}a{/Control}6.6{Enter}");
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Dashboard" }));
+    expect(screen.getByRole("button", { name: "Generating…" })).toBeDisabled();
+  }, 15_000); // renders the whole page (chart + 112-cell table) several times in jsdom
+
   it("shows an error state when the API is down", async () => {
     vi.spyOn(api, "users").mockRejectedValue(new ApiError(0, "network_error", "Could not reach the LunaPulse API."));
     render(<App />);

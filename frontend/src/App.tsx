@@ -112,6 +112,7 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
   const [insightMetrics, setInsightMetrics] = useState<Metric[]>([]);
   // Unsaved data-editor changes. They live here so they survive switching tabs.
   const [edits, setEdits] = useState<Edits>({});
+  const [generating, setGenerating] = useState(false);
   const baselines = useAsync(() => api.baselines(user.user_id, date), [user.user_id, date, version, user.data_end]);
   const observations = useAsync(() => api.observations(user.user_id, date), [user.user_id, date, version, user.data_end]);
 
@@ -150,56 +151,60 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
         <TabBar tab={tab} onTabChange={onTabChange} />
       </Controls>
 
-      {tab === "edit" && (
-        <section id="panel-edit" role="tabpanel" aria-labelledby="tab-edit" className="card">
-          {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
-          {observations.loading && !observations.data && <LoadingState label="Loading data…" />}
-          {observations.data && (
-            <DataEditor
-              observations={observations.data.observations}
-              dataStart={user.data_start}
-              edits={edits}
-              onEditsChange={setEdits}
-              onSaved={() => setVersion((v) => v + 1)}
+      {/* Both panels stay mounted (only hidden), so a running recalculation and unsaved edits survive tab switches. */}
+      <section id="panel-edit" role="tabpanel" aria-labelledby="tab-edit" className="card" hidden={tab !== "edit"}>
+        {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
+        {observations.loading && !observations.data && <LoadingState label="Loading data…" />}
+        {observations.data && (
+          <DataEditor
+            observations={observations.data.observations}
+            dataStart={user.data_start}
+            edits={edits}
+            onEditsChange={setEdits}
+            onSaved={() => setVersion((v) => v + 1)}
+            userId={user.user_id}
+            busy={generating}
+          />
+        )}
+      </section>
+
+      <div id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" className="flex flex-col gap-4" hidden={tab !== "dashboard"}>
+        {baselines.loading && !baselines.data && <LoadingState label="Calculating baselines…" />}
+        {baselines.error && <ErrorState error={baselines.error} onRetry={baselines.reload} />}
+        {baselines.data && (
+          <>
+            <DataQualityStatus metrics={baselines.data.metrics} date={baselines.data.date} />
+            <section aria-label="Metrics for the selected day" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {baselines.data.metrics.map((b) => (
+                <MetricCard
+                  key={b.metric}
+                  baseline={b}
+                  onCorrect={(value) => correct(b.metric, value)}
+                  highlighted={insightMetrics.includes(b.metric)}
+                />
+              ))}
+            </section>
+          </>
+        )}
+
+        {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
+        {observations.data && baselines.data && (
+          <TrendChart observations={observations.data.observations} baselines={baselines.data.metrics} />
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <InsightFeed
               userId={user.user_id}
+              date={date}
+              version={version}
+              onInsightMetrics={setInsightMetrics}
+              onGeneratingChange={setGenerating}
             />
-          )}
-        </section>
-      )}
-
-      {tab === "dashboard" && (
-        <div id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" className="flex flex-col gap-4">
-          {baselines.loading && !baselines.data && <LoadingState label="Calculating baselines…" />}
-          {baselines.error && <ErrorState error={baselines.error} onRetry={baselines.reload} />}
-          {baselines.data && (
-            <>
-              <DataQualityStatus metrics={baselines.data.metrics} date={baselines.data.date} />
-              <section aria-label="Metrics for the selected day" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {baselines.data.metrics.map((b) => (
-                  <MetricCard
-                    key={b.metric}
-                    baseline={b}
-                    onCorrect={(value) => correct(b.metric, value)}
-                    highlighted={insightMetrics.includes(b.metric)}
-                  />
-                ))}
-              </section>
-            </>
-          )}
-
-          {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
-          {observations.data && baselines.data && (
-            <TrendChart observations={observations.data.observations} baselines={baselines.data.metrics} />
-          )}
-
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <InsightFeed userId={user.user_id} date={date} version={version} onInsightMetrics={setInsightMetrics} />
-            </div>
-            <NotesPanel userId={user.user_id} date={date} version={version} />
           </div>
+          <NotesPanel userId={user.user_id} date={date} version={version} />
         </div>
-      )}
+      </div>
     </>
   );
 }

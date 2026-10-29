@@ -1,5 +1,5 @@
-import { RotateCcw, Save } from "lucide-react";
-import { useState, type KeyboardEvent } from "react";
+import { RotateCcw, Save, TriangleAlert } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { api } from "../api/client";
 import { METRICS, type Metric, type Observation } from "../api/types";
 import { describeFlag, formatValue, METRIC_INFO } from "../format";
@@ -14,6 +14,7 @@ interface Props {
   onEditsChange: (edits: Edits) => void;
   onSaved: () => void;
   userId: string;
+  busy?: boolean; // insights are being recalculated: saving now would race with it
 }
 
 const key = (date: string, metric: Metric) => `${date}|${metric}`;
@@ -25,13 +26,24 @@ function parseInput(text: string): number | null {
 }
 
 /** The data editor (D29): change any value, save them all at once, then recalculate from the dashboard. */
-export function DataEditor({ observations, dataStart, edits, onEditsChange, onSaved, userId }: Props) {
+export function DataEditor({ observations, dataStart, edits, onEditsChange, onSaved, userId, busy = false }: Props) {
   const [active, setActive] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [focusCell, setFocusCell] = useState<string | null>(null); // a cell button to focus after closing its input
 
   const rows = observations.filter((o) => o.date >= dataStart).reverse(); // newest first
+  // Keyboard order: left to right, then the next (older) row
+  const order = rows.flatMap((o) => METRICS.map((m) => key(o.date, m)));
+
+  useEffect(() => {
+    if (focusCell === null) return;
+    const [date, metric] = focusCell.split("|");
+    tableRef.current?.querySelector<HTMLButtonElement>(`[data-testid="cell-${date}-${metric}"] button`)?.focus();
+    setFocusCell(null);
+  }, [focusCell]);
   const changes = Object.keys(edits);
   const invalid = changes.some((k) => parseInput(edits[k]) === null);
 
@@ -55,12 +67,21 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
     setActive(null);
   }
 
+  /** Enter / Tab save the cell and open the next one (Shift+Tab: the previous one); Escape cancels. */
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>, date: string, metric: Metric) {
     if (event.key === "Enter" || event.key === "Tab") {
-      if (event.key === "Enter") event.preventDefault();
+      event.preventDefault();
       commit(date, metric);
+      const next = order[order.indexOf(key(date, metric)) + (event.key === "Tab" && event.shiftKey ? -1 : 1)];
+      if (next) {
+        const [nextDate, nextMetric] = next.split("|") as [string, Metric];
+        open(nextDate, nextMetric);
+      } else {
+        setFocusCell(key(date, metric));
+      }
     } else if (event.key === "Escape") {
       setActive(null);
+      setFocusCell(key(date, metric));
     }
   }
 
@@ -94,7 +115,7 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
         </p>
       </div>
 
-      <div className="max-h-[60vh] overflow-auto rounded-xl border border-line">
+      <div ref={tableRef} className="max-h-[60vh] overflow-auto rounded-xl border border-line">
         <table className="w-full min-w-[520px] text-left text-sm">
           <caption className="sr-only">Daily values, newest first</caption>
           <thead className="sticky top-0 z-10 bg-surface-raised text-xs text-ink-muted">
@@ -120,6 +141,9 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
                   const flags = o.data_quality_flags.filter((f) => f.endsWith(`:${m}`));
                   const flag = flags.find((f) => !f.startsWith("corrected:"))?.split(":")[0] ?? (flags.length ? "corrected" : undefined);
                   const bad = changed && parseInput(edits[k]) === null;
+                  const flagId = `flag-${o.date}-${m}`;
+                  const errorId = `error-${o.date}-${m}`;
+                  const describedBy = [flags.length ? flagId : "", bad ? errorId : ""].filter(Boolean).join(" ") || undefined;
                   const tint = changed
                     ? "bg-violet-500/20 shadow-[inset_0_0_0_1px_rgb(167_139_250/0.7),0_0_14px_rgb(139_92_246/0.35)]"
                     : flag === "corrected"
@@ -152,12 +176,19 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
                           type="button"
                           onClick={() => open(o.date, m)}
                           aria-label={`Edit ${METRIC_INFO[m].label} on ${o.date}`}
-                          className="w-full rounded-lg px-1.5 py-1 text-left hover:bg-glass-strong focus-visible:outline-2 focus-visible:outline-brand-soft"
+                          aria-describedby={describedBy}
+                          className="flex w-full items-center gap-1 rounded-lg px-1.5 py-1 text-left hover:bg-glass-strong focus-visible:outline-2 focus-visible:outline-brand-soft"
                         >
                           {changed ? edits[k] || "—" : formatValue(m, o[m])}
+                          {flag && flag !== "corrected" && !changed && (
+                            <TriangleAlert className="size-3 shrink-0 text-warn" aria-hidden />
+                          )}
                         </button>
                       )}
-                      {bad && <span className="block px-1.5 text-[11px] text-rose-300">Enter a number</span>}
+                      {flags.length > 0 && (
+                        <span id={flagId} className="sr-only">{flags.map(describeFlag).join(", ")}</span>
+                      )}
+                      {bad && <span id={errorId} className="block px-1.5 text-[11px] text-rose-300">Enter a number</span>}
                     </td>
                   );
                 })}
@@ -176,10 +207,14 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
             <button type="button" className="btn-secondary" onClick={() => onEditsChange({})} disabled={saving}>
               <RotateCcw className="size-4" aria-hidden /> Discard
             </button>
-            <button type="button" className="btn-primary" onClick={save} disabled={saving || invalid}>
+            <button type="button" className="btn-primary" onClick={save} disabled={saving || invalid || busy}>
               <Save className="size-4" aria-hidden /> {saving ? "Saving…" : "Save changes"}
             </button>
           </div>
+          {busy && (
+            <p className="w-full text-sm text-ink-soft">Wait for the insight recalculation to finish before saving.</p>
+          )}
+          {invalid && !busy && <p className="w-full text-sm text-rose-300">Fix the cells marked "Enter a number" to save.</p>}
           {error && <p role="alert" className="w-full text-sm text-rose-300">{error}</p>}
         </div>
       )}

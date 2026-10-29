@@ -11,9 +11,9 @@ const ROWS = observations.observations; // 2026-06-03 … 2026-06-30; steps miss
 const saved = { user_id: "user_a", saved: 2, stale_run_count: 1, dates: ["2026-06-29", "2026-06-30"] };
 
 /** DataEditor is controlled: the page owns the edits. This harness plays the page. */
-function Harness({ rows = ROWS, dataStart = "2026-03-03", onSaved = vi.fn() }: { rows?: Observation[]; dataStart?: string; onSaved?: () => void }) {
+function Harness({ rows = ROWS, dataStart = "2026-03-03", onSaved = vi.fn(), busy = false }: { rows?: Observation[]; dataStart?: string; onSaved?: () => void; busy?: boolean }) {
   const [edits, setEdits] = useState<Edits>({});
-  return <DataEditor observations={rows} dataStart={dataStart} edits={edits} onEditsChange={setEdits} onSaved={onSaved} userId="user_a" />;
+  return <DataEditor observations={rows} dataStart={dataStart} edits={edits} onEditsChange={setEdits} onSaved={onSaved} userId="user_a" busy={busy} />;
 }
 
 async function editCell(date: string, metric: string, text: string) {
@@ -116,5 +116,53 @@ describe("DataEditor", () => {
     render(<Harness dataStart="2026-06-08" />);
     expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(24); // header + 23 days
     expect(screen.queryByTestId("cell-2026-06-07-steps")).not.toBeInTheDocument();
+  });
+
+  // --- keyboard (review #2) ---
+
+  it("enter saves the cell and moves to the next one", async () => {
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "Edit Steps on 2026-06-30" }));
+    await userEvent.type(screen.getByRole("textbox"), "{Control>}a{/Control}9000{Enter}");
+    expect(screen.getByRole("textbox", { name: "Sleep on 2026-06-30" })).toHaveFocus();
+    expect(screen.getByTestId("cell-2026-06-30-steps")).toHaveAttribute("data-changed", "true");
+  });
+
+  it("tab moves to the next row at the end of a row, shift+tab moves back", async () => {
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "Edit HRV on 2026-06-30" }));
+    await userEvent.tab();
+    expect(screen.getByRole("textbox", { name: "Steps on 2026-06-29" })).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole("textbox", { name: "HRV on 2026-06-30" })).toHaveFocus();
+  });
+
+  it("escape returns focus to the cell", async () => {
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "Edit Sleep on 2026-06-30" }));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: "Edit Sleep on 2026-06-30" })).toHaveFocus();
+  });
+
+  // --- accessibility of flags and errors (review #5) ---
+
+  it("flagged cells describe their flag, not just a colour", () => {
+    render(<Harness />);
+    expect(screen.getByRole("button", { name: "Edit Steps on 2026-06-23" })).toHaveAccessibleDescription("Steps: Missing");
+  });
+
+  it("an invalid value's error is linked to its cell", async () => {
+    render(<Harness />);
+    await editCell("2026-06-30", "sleep_hours", "abc");
+    expect(screen.getByRole("button", { name: "Edit Sleep on 2026-06-30" })).toHaveAccessibleDescription(/Enter a number/);
+  });
+
+  // --- no save while insights are being recalculated (review #1) ---
+
+  it("save is disabled while insights are being recalculated", async () => {
+    render(<Harness busy />);
+    await editCell("2026-06-30", "sleep_hours", "6.6");
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(screen.getByText(/Wait for the insight recalculation to finish/)).toBeInTheDocument();
   });
 });

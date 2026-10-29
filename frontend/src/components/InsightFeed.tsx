@@ -13,10 +13,11 @@ interface Props {
   date: string;
   version: number; // bumped by the page when data changes (scenario, correction, data editor)
   onInsightMetrics?: (metrics: Metric[]) => void; // which metrics the visible insights are about
+  onGeneratingChange?: (generating: boolean) => void; // lets the data editor wait for a running recalculation
 }
 
 /** Up to three ranked insights for the selected day, with generate / regenerate / recalculate. */
-export function InsightFeed({ userId, date, version, onInsightMetrics }: Props) {
+export function InsightFeed({ userId, date, version, onInsightMetrics, onGeneratingChange }: Props) {
   const [showHidden, setShowHidden] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const { data: feed, loading, error, reload } = useAsync(
@@ -31,6 +32,10 @@ export function InsightFeed({ userId, date, version, onInsightMetrics }: Props) 
   useEffect(() => {
     onInsightMetrics?.([...new Set(feed?.insights.flatMap((i) => i.metrics) ?? [])]);
   }, [feed, onInsightMetrics]);
+
+  useEffect(() => {
+    onGeneratingChange?.(generating);
+  }, [generating, onGeneratingChange]);
 
   async function generate(force: boolean) {
     setGenerating(true);
