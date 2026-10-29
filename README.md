@@ -8,6 +8,8 @@ LunaPulse is a research/demo prototype of a daily-insights agent for wearable da
 
 | Document | What's in it |
 |---|---|
+| [`SUBMISSION.md`](SUBMISSION.md) | Submission checklist: where each Task 3 deliverable is |
+| [`docs/sample-data/`](docs/sample-data/) | The seeded synthetic data as CSV, with a guide to each user's scenario |
 | [`REPORT.md`](REPORT.md) | Technical report: algorithms, design choices, code walkthrough, acceptance-test results, limitations |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Modules, data model, algorithms in detail, API table |
 | [`DECISIONS.md`](DECISIONS.md) | Every choice the requirements left open, and why |

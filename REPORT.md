@@ -78,13 +78,13 @@ Ties break by score ↓, then category priority (combined > deviation > improvin
 
 ## 4. Code walkthrough: how an insight is selected
 
-`POST /users/{id}/insights/generate` → [`pipeline.generate_run`](backend/app/pipeline.py#L85) runs PRD §10 in order:
+`POST /users/{id}/insights/generate` → [`pipeline.generate_run`](backend/app/pipeline.py#L97) runs PRD §10 in order:
 
 1. **Idempotency.** Return the existing non-stale run for (user, date, rule version) unless `force` is set ([`current_run`](backend/app/pipeline.py#L49)).
 2. **Load and validate.** Readings from 89 days before the target through the day after it (the spike check looks at t+1) → [`build_observations`](backend/app/observations.py#L114).
 3. **Baselines and deviations.** [`compare_to_baseline`](backend/app/baselines.py#L214) for each metric.
 4. **Candidates.** [`generate_candidates`](backend/app/candidates.py#L312) runs deviation, trend, combined and data-quality rules. Every candidate carries its `rule_id`, magnitude ratios, persistence, qualifiers and limitations.
-5. **Rank and select.** [`rank_candidates`](backend/app/ranking.py#L90), with novelty taken from insights surfaced in the previous 3 days ([`previously_surfaced`](backend/app/pipeline.py#L62)).
+5. **Rank and select.** [`rank_candidates`](backend/app/ranking.py#L90), with novelty taken from insights surfaced in the previous 3 days ([`previously_surfaced`](backend/app/pipeline.py#L74)).
 6. **Evidence.** [`build_evidence`](backend/app/evidence.py#L53) writes one record per metric with every PRD §8 field: observed value and unit, baseline value and method, window, valid count, absolute/percentage difference, standardised score, rule id and threshold, supporting dates and values, and flags.
 7. **Explain** (§5), then **persist** the run (every candidate with its score breakdown and status, the provider, the fallback reason and the tool calls), the insights, and the evidence, which is stored apart from the explanation.
 

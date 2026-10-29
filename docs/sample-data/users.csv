@@ -1,0 +1,5 @@
+user_id,display_name,description,activity_goal_steps,sleep_target_hours,timezone,scenario,scenario_description
+user_a,User A,"Consistently active, regular sleep, relatively stable measurements.",10000,7.5,America/New_York,stable_baseline,The last 7 days stay close to the user's usual values. No injected anomaly.
+user_b,User B,Irregular sleep and activity.,9000,8.0,Europe/London,reduced_sleep,Sleep is about 1.8 hours shorter than usual for the last 5 days.
+user_c,User C,Gradual changes over several weeks: activity and sleep slowly increasing.,10000,7.5,Asia/Kolkata,gradual_trend,"Steps rise steadily over the last 21 days, ending about 45% above usual."
+user_d,User D,Missing readings and occasional noisy measurements.,8500,7.0,Australia/Sydney,stable_baseline,The last 7 days stay close to the user's usual values. No injected anomaly.
