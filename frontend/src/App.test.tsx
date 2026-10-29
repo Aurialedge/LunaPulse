@@ -68,7 +68,7 @@ describe("App", () => {
     const feedCalls = vi.mocked(api.feed).mock.calls.length;
     await userEvent.click(screen.getByRole("button", { name: "Correct Sleep value" }));
     await userEvent.type(screen.getByLabelText(/Corrected value/), "6.6");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
     expect(correct).toHaveBeenCalledWith("user_a", "2026-06-30", "sleep_hours", 6.6);
     await waitFor(() => expect(vi.mocked(api.feed).mock.calls.length).toBeGreaterThan(feedCalls));
   });

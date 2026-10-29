@@ -50,12 +50,12 @@ describe("MetricCard", () => {
     await userEvent.click(screen.getByRole("button", { name: "Correct Sleep value" }));
     const input = screen.getByLabelText(/Corrected value/);
     await userEvent.type(input, "30");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
     expect(onCorrect).toHaveBeenCalledWith(30);
     expect(await screen.findByRole("alert")).toHaveTextContent("between 0 and 24");
     await userEvent.clear(input);
     await userEvent.type(input, "6.6");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
     expect(onCorrect).toHaveBeenLastCalledWith(6.6);
     await waitFor(() => expect(screen.queryByLabelText(/Corrected value/)).not.toBeInTheDocument());
   });
@@ -65,7 +65,7 @@ describe("MetricCard", () => {
     render(<MetricCard baseline={sleep} onCorrect={onCorrect} />);
     await userEvent.click(screen.getByRole("button", { name: "Correct Sleep value" }));
     await userEvent.type(screen.getByLabelText(/Corrected value/), "abc");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
     expect(onCorrect).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a number.");
   });

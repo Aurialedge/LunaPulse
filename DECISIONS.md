@@ -124,3 +124,6 @@ When the database is empty, users A–D are seeded with seed 42, 120 days ending
 
 ## D27. Product name: LunaPulse *(user)*
 The app is called **LunaPulse** (not "PulseLens" as written in PRD §12). The subtitle stays "Your wearable data, explained with evidence." `PRD.md` keeps the original name because it's a transcription of the source documents. The repository is `github.com/Aurialedge/LunaPulse`.
+
+## D28. No pandas
+The PRD suggests pandas and NumPy. The analytics work on at most ~120 values per metric, so Python's `statistics` module (median, mean, stdev) keeps every formula readable as written, and NumPy is used only for the seeded simulator. pandas was dropped from `requirements.txt` because nothing used it.

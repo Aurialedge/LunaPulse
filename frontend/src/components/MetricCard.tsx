@@ -105,7 +105,7 @@ export function MetricCard({ baseline: b, onCorrect }: Props) {
               aria-describedby={error ? `${id}-error` : undefined}
             />
           </label>
-          <button type="submit" className="btn-primary" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+          <button type="submit" className="btn-primary" disabled={saving}>{saving ? "Saving…" : "Save correction"}</button>
           {error && <p id={`${id}-error`} role="alert" className="w-full text-xs text-red-700">{error}</p>}
         </form>
       )}

@@ -54,8 +54,9 @@ The flow runs one way. Deterministic analytics rank and select up to three insig
 | `tools.py` | The three LLM tools as plain functions over a user's observations (scoped and clamped). | pure |
 | `explanations.py` | Gemini function-calling loop, Pydantic and numeric-claim validation, one retry, fallback. | network |
 | `pipeline.py` | PRD §10 steps 1–15, plus staleness and idempotency. | DB |
-| `api/data.py` | health, users, observations, simulation, notes, corrections. | HTTP |
-| `api/insights.py` | baselines, generate, feed, insight, evidence, feedback. | HTTP |
+| `api/data.py` | health, users, observations, simulation, notes. | HTTP |
+| `api/insights.py` | baselines, generate, feed, insight, evidence, feedback, corrections. | HTTP |
+| `api/errors.py` | `ApiError` and the handlers that produce the consistent error shape. | HTTP |
 | `main.py` | App, CORS, consistent error handler, startup seed (users A–D if the DB is empty). | — |
 
 ## Data model (SQLite)
@@ -65,7 +66,7 @@ The flow runs one way. Deterministic analytics rank and select up to three insig
 | `users` | `user_id` PK, `display_name`, `profile_description`, `activity_goal_steps`, `sleep_target_hours`, `timezone`, `seed`, `scenario` |
 | `readings` | `id`, `user_id`, `date`, `metric`, `value` (nullable), `unit`, `is_available`, `quality_marker` (nullable), `source` (`device`/`user_correction`), `recorded_at` (UTC) |
 | `notes` | `id`, `user_id`, `date`, `text`, `created_at` |
-| `insight_runs` | `run_id`, `user_id`, `target_date`, `rule_version`, `generated_at`, `provider` (`gemini`/`fallback`/`mixed`/`none`), `fallback_reason`, `is_stale`, `candidates` (JSON: every candidate with score breakdown and status: selected / suppressed_redundant / below_limit / dropped_by_llm) |
+| `insight_runs` | `run_id`, `user_id`, `target_date`, `rule_version`, `generated_at`, `provider` (`gemini`/`fallback`/`mixed`/`none`), `fallback_reason`, `is_stale`, `candidates` (JSON: every candidate with score breakdown and status: selected / suppressed_redundant / below_limit / dropped_by_llm), `tool_calls` (JSON: the tools Gemini called) |
 | `insights` | `insight_id`, `run_id`, `rank`, `category`, `metrics` (JSON), `direction`, `score`, `score_components` (JSON), `confidence_label`, `explanation` (JSON), `explanation_provider` |
 | `evidence` | `evidence_id`, `insight_id`, all PRD §8 fields; lists stored as JSON |
 | `feedback` | `id`, `insight_id`, `action` (`dismissed`/`irrelevant`), `created_at` |
@@ -154,11 +155,15 @@ Errors look like `{"error": {"code": "...", "message": "..."}}` with 400/404/422
 ```
 api/        client.ts (typed fetch wrapper), types.ts (mirrors backend schemas)
 hooks/      useAsync.ts
+format.ts   display formatting only (units, separators, flag text); never statistics
 components/ Header (disclaimer), Controls (user · date · scenario), MetricCard (+ correct value),
             TrendChart (metric switch, 7/28 d, baseline line), InsightFeed, InsightCard
             (headline, explanation, confidence, dismiss/irrelevant, "Why am I seeing this?" → EvidencePanel),
             NotesPanel, DataQualityStatus, ProviderBadge, StateViews (loading/empty/error/insufficient)
 App.tsx     page composition, selected user/date state
+test/       Vitest setup and fixtures
 ```
+
+`frontend/e2e/` holds the Playwright tests. `playwright.config.ts` starts the real backend in fallback mode (temp DB, port 8001) and Vite (port 5174).
 
 Every number on screen comes from an API response. The frontend never computes statistics.

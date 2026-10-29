@@ -22,7 +22,7 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - [x] Phase 2 — analytics engine (133 backend tests total)
 - [x] Phase 3 — LLM, pipeline & analytics API (181 backend tests; real Gemini verified end to end)
 - [x] Phase 4 — frontend dashboard (32 Vitest tests; checked live with real Gemini at 1280px and 390px)
-- [ ] Phase 5 — e2e & docs
+- [x] Phase 5 — e2e & docs (8 Playwright e2e tests; README, REPORT, API_EXAMPLES, .env.example)
 
 ## Notes / gotchas
 
@@ -49,3 +49,7 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - Vite hot reload can reset the selected user to User A. Re-select the user before a manual demo action.
 - Playwright MCP screenshots go to `.playwright-mcp/` (gitignored).
 - Project renamed PulseLens → LunaPulse on 2026-10-29 (D27). Repo: https://github.com/Aurialedge/LunaPulse (the old Aurialedge/Noise repo was deleted). `PRD.md` keeps the original name on purpose.
+- Phase 5: `npm run test:e2e` starts its own backend (port 8001, temp DB, `GEMINI_API_KEY=""`) and Vite (5174), so dev servers on 8000/5173 can keep running. On Windows the Python path in `playwright.config.ts` must use backslashes (`cmd`).
+- `requirements.txt` pins exactly what's tested (pydantic 2.14.1 came in with google-genai 2.30). Check a change with a fresh venv: `python -m venv x && x/Scripts/pip install -r requirements.txt && x/Scripts/python -m pytest`.
+- API examples in `API_EXAMPLES.md` were captured from a fallback-mode TestClient (seed 42, end 2026-06-30). Regenerate them if the response shapes change.
+
