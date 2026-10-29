@@ -91,15 +91,33 @@ describe("App shell", () => {
     expect(screen.getByRole("heading", { name: "Edit data" })).toBeInTheDocument();
   });
 
-  it("insights and trends links jump to their sections on the overview", async () => {
+  it("trends and insights are pages of their own", async () => {
     render(<App />);
     await screen.findByRole("region", { name: "Metrics for the selected day" });
-    await userEvent.click(within(mainNav()).getByRole("button", { name: "Edit data" }));
-    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    const metrics = () => screen.queryByRole("region", { name: "Metrics for the selected day" });
+    const chart = () => screen.queryByRole("region", { name: "Steps, last 28 days" });
+    const feed = () => screen.queryByRole("heading", { name: /^Top insights for/ });
+
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Trends" }));
+    expect(within(mainNav()).getByRole("button", { name: "Trends" })).toHaveAttribute("aria-current", "page");
+    expect(within(mainNav()).getByRole("button", { name: "Overview" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("heading", { level: 1, name: "Trends" })).toBeInTheDocument();
+    expect(chart()).toBeInTheDocument();
+    expect(metrics()).not.toBeInTheDocument();
+    expect(feed()).not.toBeInTheDocument();
+
     await userEvent.click(within(mainNav()).getByRole("button", { name: "Insights" }));
-    expect(screen.getByRole("region", { name: "Metrics for the selected day" })).toBeInTheDocument();
-    await waitFor(() => expect(scroll).toHaveBeenCalled());
-    expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById("insights"));
+    expect(within(mainNav()).getByRole("button", { name: "Insights" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("heading", { level: 1, name: "Insights" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^Top insights for/ })).toBeInTheDocument();
+    expect(chart()).not.toBeInTheDocument();
+    expect(metrics()).not.toBeInTheDocument();
+
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Overview" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Your daily insights" })).toBeInTheDocument();
+    expect(metrics()).toBeInTheDocument();
+    expect(chart()).toBeInTheDocument();
+    expect(feed()).toBeInTheDocument();
   });
 
   it("mobile menu opens navigation and closes after choosing", async () => {

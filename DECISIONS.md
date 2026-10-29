@@ -163,3 +163,6 @@ The palette's own colours are unchanged, but text on tinted or grey surfaces use
 - **Overview order** follows `design.md` §4C.
 - **Evidence** opens in a side drawer whose state lives in `InsightFeed`, closed on any date or data change. **Corrections** use a dialog.
 - **Insight cards** fetch their own evidence (≤ 3 requests) to show observed vs. baseline, because the feed response doesn't include it.
+
+## D38. Insights and Trends are pages *(user)*
+The sidebar's Insights and Trends items used to scroll to sections of the overview. Those sections sit close together near the bottom, so both links landed on almost the same view. Now each is its own page: **Overview** shows every panel, **Trends** only the chart, and **Insights** only the feed and notes. The sidebar highlights the current page. Panels stay mounted and are only hidden, so a running recalculation survives a page switch.

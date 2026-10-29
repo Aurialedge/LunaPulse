@@ -2,9 +2,9 @@ import { LayoutDashboard, LineChart, Sparkles, Table2 } from "lucide-react";
 import type { Health } from "../../api/types";
 import { cn } from "@/lib/utils";
 
-export type View = "overview" | "edit";
-/** Where a navigation item goes: a view, or a section of the overview to scroll to. */
-export type NavTarget = "overview" | "insights" | "trends" | "edit";
+export type View = "overview" | "insights" | "trends" | "edit";
+/** Where a navigation item goes: each item is a page of its own. */
+export type NavTarget = View;
 
 const ITEMS: { target: NavTarget; label: string; Icon: typeof LayoutDashboard }[] = [
   { target: "overview", label: "Overview", Icon: LayoutDashboard },
@@ -45,7 +45,7 @@ export function Sidebar({ view, onNavigate, health }: Props) {
 
       <ul className="flex flex-col gap-0.5">
         {ITEMS.map(({ target, label, Icon }) => {
-          const current = (target === "overview" && view === "overview") || (target === "edit" && view === "edit");
+          const current = target === view;
           return (
             <li key={target}>
               <button

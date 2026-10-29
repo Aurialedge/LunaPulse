@@ -82,7 +82,7 @@ No test needs a Gemini key. The e2e suite starts its own backend on port 8001 wi
 
 The UI is a light, production-style analytics dashboard (design spec: [`design.md`](design.md), D35–D37), built with shadcn/ui primitives (Radix) on Tailwind. It's responsive (sidebar on desktop, navigation drawer on phones and tablets), keyboard accessible, and respects reduced-motion settings.
 
-- **Sidebar:** **Overview**; **Insights** and **Trends** jump to those sections; **Edit data**. The footer shows whether explanations come from Gemini or the template.
+- **Sidebar:** **Overview** (everything), **Insights** (insight feed and notes), **Trends** (the chart), **Edit data**. The footer shows whether explanations come from Gemini or the template.
 - **Top bar:** the synthetic user, the date (bounded by the user's data), **Refresh** (re-fetches every panel), a data-status indicator, and **Demo data** (regenerate a user's history with a scenario).
 - **Overview:**
   - "Your daily insights" with the user's goals and timezone;
