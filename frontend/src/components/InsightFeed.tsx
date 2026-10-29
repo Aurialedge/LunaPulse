@@ -4,7 +4,7 @@ import { api, ApiError } from "../api/client";
 import type { FeedbackAction, Feed, Metric } from "../api/types";
 import { formatDateTime } from "../format";
 import { useAsync } from "../hooks/useAsync";
-import { ProviderBadge } from "./Header";
+import { Badge } from "@/components/ui/badge";
 import { InsightCard } from "./InsightCard";
 import { EmptyState, ErrorState, LoadingState } from "./StateViews";
 
@@ -156,3 +156,30 @@ function CandidateSummary({ feed }: { feed: Feed }) {
     </details>
   );
 }
+
+const PROVIDER_TEXT: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+  gemini: { label: "Explained by Gemini", variant: "default" },
+  fallback: { label: "Template explanation", variant: "secondary" },
+  mixed: { label: "Gemini + template", variant: "default" },
+  none: { label: "No insights to explain", variant: "outline" },
+};
+
+const FALLBACK_REASON: Record<string, string> = {
+  no_api_key: "no Gemini API key is configured",
+  provider_error: "Gemini was unavailable",
+  invalid_response: "Gemini's answer was not valid JSON",
+  validation_failed: "Gemini's answer failed the evidence check",
+};
+
+/** Which service wrote the explanations, and why the template was used (from the feed response). */
+export function ProviderBadge({ provider, reason }: { provider: string; reason: string | null }) {
+  const info = PROVIDER_TEXT[provider] ?? PROVIDER_TEXT.none;
+  const why = reason ? FALLBACK_REASON[reason] ?? reason : null;
+  return (
+    <Badge variant={info.variant} title={why ? `Template used because ${why}.` : undefined}>
+      {info.label}
+      {why && <span className="font-normal">· {why}</span>}
+    </Badge>
+  );
+}
+

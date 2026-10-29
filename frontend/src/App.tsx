@@ -1,12 +1,12 @@
-import { LayoutDashboard, Table2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "./api/client";
-import type { Metric, Scenario, User } from "./api/types";
-import { Controls } from "./components/Controls";
+import type { Health, Metric, Scenario, User } from "./api/types";
 import { DataEditor, type Edits } from "./components/DataEditor";
 import { DataQualityStatus } from "./components/DataQualityStatus";
-import { Header } from "./components/Header";
 import { InsightFeed } from "./components/InsightFeed";
+import { AppLayout } from "./components/layout/AppLayout";
+import type { NavTarget, View } from "./components/layout/Sidebar";
+import { TopBar, type DataStatus } from "./components/layout/TopBar";
 import { MetricCard } from "./components/MetricCard";
 import { NotesPanel } from "./components/NotesPanel";
 import { ErrorState, LoadingState } from "./components/StateViews";
@@ -24,97 +24,88 @@ export default function App() {
   const scenarios = useAsync(() => api.scenarios(), []);
   const [userId, setUserId] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [view, setView] = useState<View>("overview");
+  const [scrollTo, setScrollTo] = useState<string | null>(null);
 
   const user = users.data?.find((u) => u.user_id === userId) ?? users.data?.[0] ?? null;
   const selectedDate = date ?? (user ? defaultDate(user) : null);
 
-  return (
-    <div className="min-h-screen pb-10">
-      <Header health={health.data} />
-      <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
-        {users.loading && !users.data && <LoadingState label="Loading synthetic users…" />}
+  function navigate(target: NavTarget) {
+    if (target === "edit") {
+      setView("edit");
+      return;
+    }
+    setView("overview");
+    setScrollTo(target === "overview" ? null : target);
+    if (target === "overview") window.scrollTo?.({ top: 0 });
+  }
+
+  // Scroll after the overview is visible again
+  useEffect(() => {
+    if (!scrollTo) return;
+    document.getElementById(scrollTo)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setScrollTo(null);
+  }, [scrollTo]);
+
+  if (!user || !selectedDate || !scenarios.data) {
+    return (
+      <AppLayout view={view} onNavigate={navigate} health={health.data}>
+        {(users.loading || scenarios.loading) && !users.error && !scenarios.error && <LoadingState label="Loading synthetic users…" />}
         {users.error && <ErrorState error={users.error} onRetry={users.reload} />}
         {scenarios.error && <ErrorState error={scenarios.error} onRetry={scenarios.reload} />}
-        {user && selectedDate && scenarios.data && (
-          <Dashboard
-            key={user.user_id}
-            users={users.data!}
-            user={user}
-            date={selectedDate}
-            scenarios={scenarios.data}
-            tab={tab}
-            onTabChange={setTab}
-            onUserChange={(id) => {
-              setUserId(id);
-              setDate(null);
-            }}
-            onDateChange={setDate}
-            onDataRegenerated={() => {
-              setDate(null);
-              users.reload();
-            }}
-          />
-        )}
-      </main>
-    </div>
-  );
-}
+      </AppLayout>
+    );
+  }
 
-type Tab = "dashboard" | "edit";
-
-const TABS: { id: Tab; label: string; Icon: typeof LayoutDashboard }[] = [
-  { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
-  { id: "edit", label: "Edit data", Icon: Table2 },
-];
-
-function TabBar({ tab, onTabChange }: { tab: Tab; onTabChange: (tab: Tab) => void }) {
   return (
-    <div role="tablist" aria-label="Views" className="flex gap-1 border-t border-line pt-3">
-      {TABS.map(({ id, label, Icon }) => (
-        <button
-          key={id}
-          type="button"
-          role="tab"
-          id={`tab-${id}`}
-          aria-selected={tab === id}
-          aria-controls={`panel-${id}`}
-          onClick={() => onTabChange(id)}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-brand-soft ${
-            tab === id
-              ? "bg-violet-500/20 text-violet-100 shadow-[0_0_16px_rgb(139_92_246/0.35)]"
-              : "text-ink-soft hover:bg-glass-strong hover:text-ink"
-          }`}
-        >
-          <Icon className="size-4" aria-hidden />
-          {label}
-        </button>
-      ))}
-    </div>
+    <Workspace
+      key={user.user_id}
+      health={health.data}
+      users={users.data!}
+      user={user}
+      date={selectedDate}
+      scenarios={scenarios.data}
+      view={view}
+      onNavigate={navigate}
+      onUserChange={(id) => {
+        setUserId(id);
+        setDate(null);
+      }}
+      onDateChange={setDate}
+      onDataRegenerated={() => {
+        setDate(null);
+        users.reload();
+      }}
+    />
   );
 }
 
-interface DashboardProps {
+interface WorkspaceProps {
+  health: Health | null;
   users: User[];
   user: User;
   date: string;
   scenarios: Scenario[];
-  tab: Tab;
-  onTabChange: (tab: Tab) => void;
+  view: View;
+  onNavigate: (target: NavTarget) => void;
   onUserChange: (userId: string) => void;
   onDateChange: (date: string) => void;
   onDataRegenerated: () => void;
 }
 
-function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChange, onDateChange, onDataRegenerated }: DashboardProps) {
-  // Bumped whenever this user's data changes, so every panel re-fetches from the backend.
+/** Everything for one selected user. Keyed by user, so switching users starts clean. */
+function Workspace({ health, users, user, date, scenarios, view, onNavigate, onUserChange, onDateChange, onDataRegenerated }: WorkspaceProps) {
+  // Bumped whenever this user's data changes (or on Refresh), so every panel re-fetches from the backend.
   const [version, setVersion] = useState(0);
   const [insightMetrics, setInsightMetrics] = useState<Metric[]>([]);
-  // Unsaved data-editor changes. They live here so they survive switching tabs.
+  // Unsaved data-editor changes. They live here so they survive switching views.
   const [edits, setEdits] = useState<Edits>({});
   const [generating, setGenerating] = useState(false);
   const baselines = useAsync(() => api.baselines(user.user_id, date), [user.user_id, date, version, user.data_end]);
   const observations = useAsync(() => api.observations(user.user_id, date), [user.user_id, date, version, user.data_end]);
+
+  const status: DataStatus =
+    baselines.loading || observations.loading ? "loading" : baselines.error || observations.error ? "unavailable" : "loaded";
 
   /** True when it's fine to throw away unsaved edits (none, or the user confirms). */
   function mayDiscardEdits(): boolean {
@@ -138,21 +129,27 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
   }
 
   return (
-    <>
-      <Controls
-        users={users}
-        scenarios={scenarios}
-        user={user}
-        date={date}
-        onUserChange={(id) => mayDiscardEdits() && onUserChange(id)}
-        onDateChange={(d) => mayDiscardEdits() && onDateChange(d)}
-        onApplyScenario={applyScenario}
-      >
-        <TabBar tab={tab} onTabChange={onTabChange} />
-      </Controls>
-
-      {/* Both panels stay mounted (only hidden), so a running recalculation and unsaved edits survive tab switches. */}
-      <section id="panel-edit" role="tabpanel" aria-labelledby="tab-edit" className="card" hidden={tab !== "edit"}>
+    <AppLayout
+      view={view}
+      onNavigate={onNavigate}
+      health={health}
+      topBar={
+        <TopBar
+          title={view === "edit" ? "Edit data" : "Overview"}
+          users={users}
+          user={user}
+          date={date}
+          scenarios={scenarios}
+          status={status}
+          onUserChange={(id) => mayDiscardEdits() && onUserChange(id)}
+          onDateChange={(d) => mayDiscardEdits() && onDateChange(d)}
+          onRefresh={() => setVersion((v) => v + 1)}
+          onApplyScenario={applyScenario}
+        />
+      }
+    >
+      {/* Both views stay mounted (only hidden), so a running recalculation and unsaved edits survive switching. */}
+      <section aria-label="Edit data" className="card" hidden={view !== "edit"}>
         {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
         {observations.loading && !observations.data && <LoadingState label="Loading data…" />}
         {observations.data && (
@@ -168,13 +165,13 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
         )}
       </section>
 
-      <div id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" className="flex flex-col gap-4" hidden={tab !== "dashboard"}>
+      <div className="flex flex-col gap-6" hidden={view !== "overview"}>
         {baselines.loading && !baselines.data && <LoadingState label="Calculating baselines…" />}
         {baselines.error && <ErrorState error={baselines.error} onRetry={baselines.reload} />}
         {baselines.data && (
           <>
             <DataQualityStatus metrics={baselines.data.metrics} date={baselines.data.date} />
-            <section aria-label="Metrics for the selected day" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <section aria-label="Metrics for the selected day" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {baselines.data.metrics.map((b) => (
                 <MetricCard
                   key={b.metric}
@@ -187,13 +184,15 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
           </>
         )}
 
-        {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
-        {observations.data && baselines.data && (
-          <TrendChart observations={observations.data.observations} baselines={baselines.data.metrics} />
-        )}
+        <div id="trends" className="scroll-mt-28">
+          {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
+          {observations.data && baselines.data && (
+            <TrendChart observations={observations.data.observations} baselines={baselines.data.metrics} />
+          )}
+        </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+        <div id="insights" className="grid scroll-mt-28 gap-6 xl:grid-cols-3">
+          <div className="xl:col-span-2">
             <InsightFeed
               userId={user.user_id}
               date={date}
@@ -205,6 +204,6 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
           <NotesPanel userId={user.user_id} date={date} version={version} />
         </div>
       </div>
-    </>
+    </AppLayout>
   );
 }

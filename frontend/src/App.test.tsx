@@ -16,12 +16,13 @@ beforeEach(() => {
   vi.spyOn(api, "evidence").mockResolvedValue(evidence);
 });
 
-describe("App", () => {
-  it("renders the branded dashboard from backend responses", async () => {
+const mainNav = () => screen.getByRole("navigation", { name: "Main" });
+
+describe("App shell", () => {
+  it("renders the app shell and the dashboard from backend responses", async () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: "LunaPulse" })).toBeInTheDocument();
-    expect(screen.getByText("Your wearable data, explained with evidence.")).toBeInTheDocument();
-    expect(screen.getByText(/All data is synthetic/)).toBeInTheDocument();
+    expect(within(mainNav()).getByText("LunaPulse")).toBeInTheDocument();
+    expect(screen.getAllByText(/All data is synthetic/).length).toBeGreaterThan(0);
 
     const cards = await screen.findByRole("region", { name: "Metrics for the selected day" });
     expect(within(cards).getByTestId("metric-steps-value")).toHaveTextContent("10,658 steps");
@@ -30,6 +31,51 @@ describe("App", () => {
     expect(await screen.findAllByTestId("insight-card")).toHaveLength(1);
     expect(api.baselines).toHaveBeenCalledWith("user_a", "2026-06-30");
     expect(api.feed).toHaveBeenCalledWith("user_a", "2026-06-30", false);
+  });
+
+  it("sidebar switches between overview and the data editor", async () => {
+    render(<App />);
+    await screen.findByRole("region", { name: "Metrics for the selected day" });
+    expect(within(mainNav()).getByRole("button", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Edit data" }));
+    expect(within(mainNav()).getByRole("button", { name: "Edit data" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("region", { name: "Metrics for the selected day" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Edit data" })).toBeInTheDocument();
+  });
+
+  it("insights and trends links jump to their sections on the overview", async () => {
+    render(<App />);
+    await screen.findByRole("region", { name: "Metrics for the selected day" });
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Edit data" }));
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Insights" }));
+    expect(screen.getByRole("region", { name: "Metrics for the selected day" })).toBeInTheDocument();
+    await waitFor(() => expect(scroll).toHaveBeenCalled());
+    expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById("insights"));
+  });
+
+  it("mobile menu opens navigation and closes after choosing", async () => {
+    render(<App />);
+    await screen.findByRole("region", { name: "Metrics for the selected day" });
+    await userEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    const drawer = await screen.findByRole("dialog", { name: "Navigation" });
+    await userEvent.click(within(drawer).getByRole("button", { name: "Edit data" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Navigation" })).not.toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Edit data" })).toBeInTheDocument();
+  });
+
+  it("top bar shows the data status", async () => {
+    render(<App />);
+    expect(await screen.findByText("Data loaded")).toBeInTheDocument();
+  });
+
+  it("refresh re-fetches every panel", async () => {
+    render(<App />);
+    await screen.findByText("Data loaded");
+    const counts = () => [api.baselines, api.observations, api.feed].map((f) => vi.mocked(f).mock.calls.length);
+    const before = counts();
+    await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() => counts().forEach((n, i) => expect(n).toBeGreaterThan(before[i])));
   });
 
   it("switching user and date refetches for that selection", async () => {
@@ -44,7 +90,7 @@ describe("App", () => {
     expect(api.feed).toHaveBeenCalledWith("user_b", "2026-06-20", false);
   });
 
-  it("applying a scenario regenerates data and refreshes every panel", async () => {
+  it("demo data dialog regenerates the user's data and refreshes every panel", async () => {
     const regenerate = vi.spyOn(api, "generateSimulation").mockResolvedValue({
       user_id: "user_a", scenario: "stable_baseline", seed: 42, days: 120, start_date: "", end_date: "",
       reading_count: 480, note_count: 0,
@@ -52,11 +98,14 @@ describe("App", () => {
     render(<App />);
     await screen.findByRole("region", { name: "Metrics for the selected day" });
     const before = vi.mocked(api.baselines).mock.calls.length;
-    await userEvent.selectOptions(screen.getByLabelText("Demo scenario"), "stable_baseline");
-    await userEvent.click(screen.getByRole("button", { name: "Regenerate data" }));
+    await userEvent.click(screen.getByRole("button", { name: "Demo data" }));
+    const dialog = await screen.findByRole("dialog", { name: "Demo data" });
+    await userEvent.selectOptions(within(dialog).getByLabelText("Demo scenario"), "stable_baseline");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Regenerate data" }));
     expect(regenerate).toHaveBeenCalledWith("user_a", "stable_baseline");
     await waitFor(() => expect(vi.mocked(api.baselines).mock.calls.length).toBeGreaterThan(before));
     expect(api.users).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Demo data" })).not.toBeInTheDocument());
   });
 
   it("a correction is sent for the selected day and the dashboard refreshes", async () => {
@@ -73,21 +122,11 @@ describe("App", () => {
     await waitFor(() => expect(vi.mocked(api.feed).mock.calls.length).toBeGreaterThan(feedCalls));
   });
 
-  it("tabs switch between dashboard and data editor", async () => {
-    render(<App />);
-    await screen.findByRole("region", { name: "Metrics for the selected day" });
-    expect(screen.getByRole("tab", { name: "Dashboard" })).toHaveAttribute("aria-selected", "true");
-    await userEvent.click(screen.getByRole("tab", { name: "Edit data" }));
-    expect(screen.getByRole("tab", { name: "Edit data" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("region", { name: "Metrics for the selected day" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Edit data" })).toBeInTheDocument();
-  });
-
   it("switching user with unsaved edits asks for confirmation", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<App />);
     await screen.findByRole("region", { name: "Metrics for the selected day" });
-    await userEvent.click(screen.getByRole("tab", { name: "Edit data" }));
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Edit data" }));
     await userEvent.click(screen.getByTestId("cell-2026-06-30-sleep_hours").querySelector("button")!);
     await userEvent.type(screen.getByRole("textbox"), "{Control>}a{/Control}6.6{Enter}");
     expect(screen.getByText("1 unsaved change")).toBeInTheDocument();
@@ -97,25 +136,25 @@ describe("App", () => {
     expect(screen.getByLabelText("Synthetic user")).toHaveValue("user_a");
     expect(screen.getByText("1 unsaved change")).toBeInTheDocument();
 
-    // edits survive switching tabs
-    await userEvent.click(screen.getByRole("tab", { name: "Dashboard" }));
-    await userEvent.click(screen.getByRole("tab", { name: "Edit data" }));
+    // edits survive switching views
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Overview" }));
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Edit data" }));
     expect(screen.getByText("1 unsaved change")).toBeInTheDocument();
-  });
+  }, 15_000);
 
-  it("a running recalculation survives switching tabs and blocks saving edits", async () => {
+  it("a running recalculation survives switching views and blocks saving edits", async () => {
     vi.spyOn(api, "feed").mockRejectedValue(new ApiError(404, "insights_not_generated", "No current insights."));
     vi.spyOn(api, "generateInsights").mockReturnValue(new Promise(() => {})); // still running
     render(<App />);
     await userEvent.click(await screen.findByRole("button", { name: "Generate insights" }));
     expect(screen.getByRole("button", { name: "Generating…" })).toBeDisabled();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Edit data" }));
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Edit data" }));
     await userEvent.click(screen.getByRole("button", { name: "Edit Sleep on 2026-06-30" }));
     await userEvent.type(screen.getByRole("textbox"), "{Control>}a{/Control}6.6{Enter}");
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Dashboard" }));
+    await userEvent.click(within(mainNav()).getByRole("button", { name: "Overview" }));
     expect(screen.getByRole("button", { name: "Generating…" })).toBeDisabled();
   }, 15_000); // renders the whole page (chart + 112-cell table) several times in jsdom
 
