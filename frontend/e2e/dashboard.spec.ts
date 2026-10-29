@@ -99,7 +99,7 @@ test("a correction recomputes the day and removes the outdated insight", async (
   await page.getByRole("button", { name: "Save correction" }).click();
 
   await expect(page.getByTestId("metric-sleep_hours-value")).toHaveText(shown("sleep_hours", sleep.median));
-  await expect(page.getByText("Sleep: Corrected by you")).toBeVisible();
+  await expect(page.getByTestId("metric-sleep_hours").getByText("Sleep: Corrected by you")).toBeVisible();
   await expect(page.getByTestId("insight-card").filter({ hasText: "Shorter sleep" })).toHaveCount(0);
 
   const feed = await (await request.get(`${API}/users/user_b/insights?date=${date}`)).json();
