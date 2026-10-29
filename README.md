@@ -53,6 +53,18 @@ npm install
 npm run dev                          # http://localhost:5173
 ```
 
+On **Windows PowerShell**, `source` doesn't exist. After the same first-time setup (`python -m venv .venv`, then `.venv\Scripts\python.exe -m pip install -r requirements.txt` and `npm install`), call the venv's Python directly so no activation is needed:
+
+```powershell
+# Window 1: backend
+cd backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+
+# Window 2: frontend
+cd frontend
+npm run dev                          # http://localhost:5173
+```
+
 On first start the backend creates `backend/lunapulse.db` and seeds users A–D: 120 days each, seed 42, ending at each user's local "today". To reseed from scratch, delete the file. The API's interactive docs are at http://localhost:8000/docs.
 
 ## Configuration
