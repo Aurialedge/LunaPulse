@@ -39,9 +39,26 @@ describe("MetricCard", () => {
     expect(screen.getByText("Resting heart rate: Low-quality reading")).toBeInTheDocument();
   });
 
-  it("shows a missing value as a dash", () => {
+  it("shows a missing value as 'No data recorded', never as zero", () => {
     render(<MetricCard baseline={{ ...sleep, observed_value: null, absolute_difference: null }} onCorrect={vi.fn()} />);
-    expect(screen.getByTestId("metric-sleep_hours-value")).toHaveTextContent("—");
+    expect(screen.getByTestId("metric-sleep_hours-value")).toHaveTextContent("No data recorded");
+  });
+
+  it("missing value and insufficient history", () => {
+    const empty = { ...hrv, observed_value: null, goal_value: null, goal_progress_percent: null };
+    render(<MetricCard baseline={empty} onCorrect={vi.fn()} history={observations.observations.map((o) => ({ ...o, hrv_ms: null }))} />);
+    expect(screen.getByTestId("metric-hrv_ms-value")).toHaveTextContent("No data recorded");
+    expect(screen.getByTestId("metric-hrv_ms-insufficient")).toHaveTextContent("Insufficient history");
+    expect(screen.queryByTestId("metric-hrv_ms-difference")).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("HRV over the last 28 days")).toHaveAttribute("data-points", "0");
+  });
+
+  it("sparkline plots the real history and leaves gaps", () => {
+    render(<MetricCard baseline={steps} onCorrect={vi.fn()} history={observations.observations} />);
+    const spark = screen.getByLabelText("Steps over the last 28 days");
+    expect(spark).toHaveAttribute("data-points", "27"); // 28 days, one missing
+    expect(spark.querySelectorAll("polyline")).toHaveLength(2); // the gap splits the line in two
   });
 
   it("submits a correction and shows backend errors", async () => {
@@ -60,15 +77,16 @@ describe("MetricCard", () => {
     await waitFor(() => expect(screen.queryByLabelText(/Corrected value/)).not.toBeInTheDocument());
   });
 
-  it("shows a goal ring from the backend progress", () => {
+  it("goal progress bar uses backend progress", () => {
     render(<MetricCard baseline={{ ...steps, goal_value: 9000, goal_progress_percent: 95.3 }} onCorrect={vi.fn()} />);
-    expect(screen.getByLabelText("95.3% of goal")).toBeInTheDocument();
-    expect(screen.getByText("goal 9,000 steps")).toBeInTheDocument();
+    const bar = screen.getByRole("progressbar", { name: "Steps goal progress" });
+    expect(bar).toHaveAttribute("aria-valuenow", "95.3");
+    expect(screen.getByText("95.3% of 9,000 steps goal")).toBeInTheDocument();
   });
 
-  it("metrics without a goal show no ring", () => {
+  it("metrics without a goal show no goal progress", () => {
     render(<MetricCard baseline={rhr} onCorrect={vi.fn()} />);
-    expect(screen.queryByLabelText(/of goal/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
   it("highlights tiles named by a current insight", () => {

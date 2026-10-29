@@ -1,7 +1,12 @@
-import { Activity, ArrowDownRight, ArrowUpRight, Footprints, HeartPulse, Minus, Moon, Pencil } from "lucide-react";
-import { useState, type CSSProperties, type FormEvent } from "react";
-import type { Metric, MetricBaseline } from "../api/types";
+import { Activity, ArrowDownRight, ArrowUpRight, Check, Footprints, HeartPulse, Info, Minus, Moon, Pencil, TriangleAlert } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import type { Metric, MetricBaseline, Observation } from "../api/types";
 import { describeFlag, formatPercent, formatSigned, formatValue, METRIC_INFO } from "../format";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 const ICONS: Record<Metric, typeof Activity> = {
   steps: Footprints,
@@ -10,32 +15,49 @@ const ICONS: Record<Metric, typeof Activity> = {
   hrv_ms: Activity,
 };
 
-const RING_RADIUS = 26;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const SPARK_W = 120;
+const SPARK_H = 32;
 
-/** Progress towards the user's own goal. `percent` comes from the backend (goal_progress_percent). */
-function GoalRing({ percent, accent, label }: { percent: number; accent: string; label: string }) {
-  const offset = RING_CIRCUMFERENCE * (1 - percent / 100);
+/**
+ * A tiny line of the real daily values. Missing days split the line instead of dropping to zero.
+ * Placing points on the SVG is drawing, not statistics: every value comes from the observations response.
+ */
+function Sparkline({ metric, history }: { metric: Metric; history: Observation[] }) {
+  const values = history.map((o) => o[metric]);
+  const present = values.filter((v): v is number => v !== null);
+  const low = Math.min(...present);
+  const high = Math.max(...present);
+  const x = (i: number) => (values.length > 1 ? (i / (values.length - 1)) * SPARK_W : SPARK_W / 2);
+  const y = (v: number) => (high === low ? SPARK_H / 2 : SPARK_H - 2 - ((v - low) / (high - low)) * (SPARK_H - 4));
+
+  const segments: string[][] = [[]];
+  values.forEach((v, i) => {
+    if (v === null) segments.push([]);
+    else segments[segments.length - 1].push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+  });
+  const lines = segments.filter((s) => s.length > 0);
+  const last = values.length - 1;
+  const { accent, label } = METRIC_INFO[metric];
+
   return (
-    <svg viewBox="0 0 64 64" className="size-16 shrink-0" role="img" aria-label={label}>
-      <circle cx="32" cy="32" r={RING_RADIUS} fill="none" stroke="var(--color-glass-strong)" strokeWidth="6" />
-      <circle
-        cx="32"
-        cy="32"
-        r={RING_RADIUS}
-        fill="none"
-        stroke={accent}
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeDasharray={RING_CIRCUMFERENCE}
-        strokeDashoffset={offset}
-        transform="rotate(-90 32 32)"
-        className="lp-ring"
-        style={{ "--ring-c": RING_CIRCUMFERENCE, filter: `drop-shadow(0 0 4px ${accent})` } as CSSProperties}
-      />
-      <text x="32" y="36" textAnchor="middle" className="fill-ink text-[12px] font-semibold">
-        {Math.round(percent)}%
-      </text>
+    <svg
+      role="img"
+      aria-label={`${label} over the last ${values.length} days`}
+      data-points={present.length}
+      viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
+      preserveAspectRatio="none"
+      className="h-8 w-full overflow-visible"
+    >
+      {lines.map((points, i) =>
+        points.length === 1 ? (
+          <circle key={i} cx={points[0].split(",")[0]} cy={points[0].split(",")[1]} r="1.5" fill={accent} />
+        ) : (
+          <polyline key={i} points={points.join(" ")} fill="none" stroke={accent} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+        ),
+      )}
+      {values[last] !== null && values[last] !== undefined && (
+        <circle cx={x(last)} cy={y(values[last] as number)} r="2.5" fill={accent} stroke="white" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      )}
     </svg>
   );
 }
@@ -43,17 +65,18 @@ function GoalRing({ percent, accent, label }: { percent: number; accent: string;
 interface Props {
   baseline: MetricBaseline;
   onCorrect: (value: number) => Promise<void>;
-  highlighted?: boolean; // a current insight is about this metric
+  history?: Observation[]; // the 28-day observations response, for the sparkline
+  highlighted?: boolean; // a current insight is about this metric (D33)
 }
 
-/** Today's value vs. the personal baseline. Every number comes from the baselines endpoint. */
-export function MetricCard({ baseline: b, onCorrect, highlighted = false }: Props) {
+/** Today's value vs. the personal baseline. Every number comes from the backend. */
+export function MetricCard({ baseline: b, onCorrect, history, highlighted = false }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const id = `metric-${b.metric}`;
-  const { accent } = METRIC_INFO[b.metric];
+  const { accent, label } = METRIC_INFO[b.metric];
   const Icon = ICONS[b.metric];
   const Arrow = b.direction === "above" ? ArrowUpRight : b.direction === "below" ? ArrowDownRight : Minus;
 
@@ -78,95 +101,105 @@ export function MetricCard({ baseline: b, onCorrect, highlighted = false }: Prop
   }
 
   return (
-    <article
-      className="card lp-enter flex flex-col gap-3 transition"
+    <Card
       aria-labelledby={id}
       data-testid={id}
       data-highlighted={highlighted}
-      style={highlighted ? { borderColor: accent, boxShadow: `0 0 24px -6px ${accent}` } : undefined}
+      className={cn("lp-enter flex flex-col gap-3 p-5 transition-shadow", highlighted && "border-primary/40 ring-1 ring-primary/20")}
     >
       <div className="flex items-center justify-between gap-2">
-        <h3 id={id} className="eyebrow flex items-center gap-1.5 text-ink-soft">
-          <Icon className="size-4" style={{ color: accent }} aria-hidden />
+        <h3 id={id} className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <span className="grid size-6 place-items-center rounded-md bg-secondary" aria-hidden>
+            <Icon className="size-3.5" style={{ color: accent }} />
+          </span>
           {b.label}
         </h3>
-        <button
-          type="button"
-          className="rounded-lg p-1 text-ink-muted hover:bg-glass-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-brand-soft"
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 text-muted-foreground"
           onClick={() => setEditing((v) => !v)}
           aria-expanded={editing}
           aria-label={`Correct ${b.label} value`}
         >
-          <Pencil className="size-4" aria-hidden />
-        </button>
+          <Pencil aria-hidden />
+        </Button>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-2xl font-bold tabular-nums tracking-tight" data-testid={`${id}-value`}>
-            {formatValue(b.metric, b.observed_value)}
-          </p>
-          {b.goal_value !== null && (
-            <p className="text-xs text-ink-muted">goal {formatValue(b.metric, b.goal_value)}</p>
-          )}
-        </div>
-        {b.goal_progress_percent !== null ? (
-          <GoalRing percent={b.goal_progress_percent} accent={accent} label={`${b.goal_progress_percent}% of goal`} />
-        ) : (
-          <span
-            className="grid size-12 shrink-0 place-items-center rounded-full border border-line"
-            style={{ color: accent, boxShadow: `0 0 18px -4px ${accent}` }}
-            aria-hidden
-          >
-            <Icon className="size-5" />
-          </span>
-        )}
-      </div>
+      <p data-testid={`${id}-value`} className={cn("tabular-nums tracking-tight", b.observed_value === null ? "text-base font-medium text-muted-foreground" : "text-[30px] leading-none font-semibold")}>
+        {b.observed_value === null ? "No data recorded" : formatValue(b.metric, b.observed_value)}
+      </p>
 
       {b.status === "insufficient" ? (
-        <p className="text-sm text-amber-200" data-testid={`${id}-insufficient`}>
-          Not enough history for a baseline: {b.valid_observation_count} of {b.window_days} days valid.
+        <p className="flex items-start gap-1.5 text-[13px] text-muted-foreground" data-testid={`${id}-insufficient`}>
+          <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          <span>
+            <span className="font-medium text-foreground">Insufficient history</span> for a personal baseline:{" "}
+            {b.valid_observation_count} of {b.window_days} days valid.
+          </span>
         </p>
       ) : (
-        <>
-          <p className="text-sm text-ink-soft">
-            Baseline <span className="font-semibold text-ink tabular-nums" data-testid={`${id}-baseline`}>{formatValue(b.metric, b.median)}</span>{" "}
-            <span className="text-ink-muted">(median, {b.valid_observation_count} of {b.window_days} days)</span>
+        <div className="flex flex-col gap-1 text-[13px]">
+          <p className="text-muted-foreground">
+            Personal baseline{" "}
+            <span className="font-medium text-foreground tabular-nums" data-testid={`${id}-baseline`}>{formatValue(b.metric, b.median)}</span>{" "}
+            <span>(median, {b.valid_observation_count} of {b.window_days} days)</span>
           </p>
           {b.absolute_difference !== null ? (
-            <div className="text-sm">
-              <p className="flex flex-wrap items-center gap-x-2" data-testid={`${id}-difference`}>
-                <span className="inline-flex items-center gap-1 whitespace-nowrap font-semibold tabular-nums">
-                  <Arrow className="size-4 shrink-0" style={{ color: accent }} aria-hidden />
-                  {formatSigned(b.metric, b.absolute_difference)}
-                </span>
-                <span className="whitespace-nowrap tabular-nums text-ink-muted">{formatPercent(b.percentage_difference)}</span>
+            <>
+              <p className="flex flex-wrap items-center gap-x-1.5" data-testid={`${id}-difference`}>
+                <Arrow className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="font-medium whitespace-nowrap tabular-nums">{formatSigned(b.metric, b.absolute_difference)}</span>
+                <span className="whitespace-nowrap text-muted-foreground tabular-nums">{formatPercent(b.percentage_difference)}</span>
                 <span className="sr-only">compared with the baseline</span>
               </p>
-              <p className="text-ink-muted">{b.interpretation}</p>
-            </div>
+              <p className="text-muted-foreground">{b.interpretation}</p>
+            </>
           ) : (
-            <p className="text-sm text-ink-muted">{b.interpretation}</p>
+            <p className="text-muted-foreground">{b.interpretation}</p>
           )}
-        </>
+        </div>
+      )}
+
+      {history && <Sparkline metric={b.metric} history={history} />}
+
+      {b.goal_progress_percent !== null && b.goal_value !== null && (
+        <div className="flex flex-col gap-1">
+          <div
+            role="progressbar"
+            aria-label={`${label} goal progress`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={b.goal_progress_percent}
+            className="h-1.5 overflow-hidden rounded-full bg-secondary"
+          >
+            <div className="h-full rounded-full" style={{ width: `${b.goal_progress_percent}%`, background: accent }} />
+          </div>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {b.goal_progress_percent}% of {formatValue(b.metric, b.goal_value)} goal
+          </p>
+        </div>
       )}
 
       {b.target_flags.length > 0 && (
         <ul className="flex flex-wrap gap-1" aria-label={`${b.label} data-quality flags`}>
-          {b.target_flags.map((flag) => (
-            <li
-              key={flag}
-              className={`chip ${flag.startsWith("corrected:") ? "bg-teal-400/15 text-teal-200" : "bg-amber-400/15 text-amber-200"}`}
-            >
-              {describeFlag(flag)}
-            </li>
-          ))}
+          {b.target_flags.map((flag) => {
+            const corrected = flag.startsWith("corrected:");
+            return (
+              <li key={flag}>
+                <Badge variant={corrected ? "positive" : "warning"} className={corrected ? "" : "text-warning-foreground"}>
+                  {corrected ? <Check aria-hidden /> : <TriangleAlert aria-hidden />}
+                  {describeFlag(flag)}
+                </Badge>
+              </li>
+            );
+          })}
         </ul>
       )}
 
       {editing && (
-        <form onSubmit={submit} className="flex flex-wrap items-end gap-2 border-t border-line pt-3">
-          <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-ink-soft">
+        <form onSubmit={submit} className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
+          <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-muted-foreground">
             Corrected value ({b.unit})
             <input
               className="input"
@@ -176,10 +209,22 @@ export function MetricCard({ baseline: b, onCorrect, highlighted = false }: Prop
               aria-describedby={error ? `${id}-error` : undefined}
             />
           </label>
-          <button type="submit" className="btn-primary" disabled={saving}>{saving ? "Saving…" : "Save correction"}</button>
-          {error && <p id={`${id}-error`} role="alert" className="w-full text-xs text-rose-300">{error}</p>}
+          <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save correction"}</Button>
+          {error && <p id={`${id}-error`} role="alert" className="w-full text-xs text-negative">{error}</p>}
         </form>
       )}
-    </article>
+    </Card>
+  );
+}
+
+/** Placeholder with the card's shape while baselines load. */
+export function MetricCardSkeleton() {
+  return (
+    <Card data-testid="metric-skeleton" className="flex flex-col gap-3 p-5">
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="h-8 w-32" />
+      <Skeleton className="h-3 w-40" />
+      <Skeleton className="h-8 w-full" />
+    </Card>
   );
 }

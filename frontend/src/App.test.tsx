@@ -33,6 +33,20 @@ describe("App shell", () => {
     expect(api.feed).toHaveBeenCalledWith("user_a", "2026-06-30", false);
   });
 
+  it("overview has the page heading and user context", async () => {
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Your daily insights" })).toBeInTheDocument();
+    expect(screen.getByText(/Understand what changed in your wearable data/)).toBeInTheDocument();
+    expect(screen.getByTestId("user-context")).toHaveTextContent("User A");
+    expect(screen.getByTestId("user-context")).toHaveTextContent("Goals 10,000 steps · 7.5 h sleep");
+  });
+
+  it("metric skeletons while loading", async () => {
+    vi.spyOn(api, "baselines").mockReturnValue(new Promise(() => {}));
+    render(<App />);
+    expect(await screen.findAllByTestId("metric-skeleton")).toHaveLength(4);
+  });
+
   it("sidebar switches between overview and the data editor", async () => {
     render(<App />);
     await screen.findByRole("region", { name: "Metrics for the selected day" });

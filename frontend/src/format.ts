@@ -59,3 +59,12 @@ export const CATEGORY_TEXT: Record<string, string> = {
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
+
+/** "2026-10-29" -> "Thu, 29 Oct 2026". The date is a user-local calendar date (D19), so no timezone shifting. */
+export function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
+    weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+  });
+}
+

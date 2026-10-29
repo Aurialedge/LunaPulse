@@ -7,10 +7,11 @@ import { InsightFeed } from "./components/InsightFeed";
 import { AppLayout } from "./components/layout/AppLayout";
 import type { NavTarget, View } from "./components/layout/Sidebar";
 import { TopBar, type DataStatus } from "./components/layout/TopBar";
-import { MetricCard } from "./components/MetricCard";
+import { MetricCard, MetricCardSkeleton } from "./components/MetricCard";
 import { NotesPanel } from "./components/NotesPanel";
 import { ErrorState, LoadingState } from "./components/StateViews";
 import { TrendChart } from "./components/TrendChart";
+import { formatDate } from "./format";
 import { useAsync } from "./hooks/useAsync";
 
 /** The user's latest day with data, never after their local today (both dates come from the backend). */
@@ -166,11 +167,26 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
       </section>
 
       <div className="flex flex-col gap-6" hidden={view !== "overview"}>
-        {baselines.loading && !baselines.data && <LoadingState label="Calculating baselines…" />}
+        <header className="flex flex-col gap-1.5">
+          <h1 className="text-[28px] leading-tight font-semibold tracking-tight lg:text-[30px]">Your daily insights</h1>
+          <p className="text-[15px] text-muted-foreground">
+            Understand what changed in your wearable data, with the evidence behind every insight.
+          </p>
+          <p data-testid="user-context" className="text-[13px] text-muted-foreground">
+            <span className="font-medium text-foreground">{user.display_name}</span> · {user.profile_description} · Goals{" "}
+            {user.activity_goal_steps.toLocaleString("en-US")} steps · {user.sleep_target_hours} h sleep · {user.timezone} ·{" "}
+            <span className="font-medium text-foreground">{formatDate(date)}</span>
+          </p>
+        </header>
+
+        {baselines.loading && !baselines.data && (
+          <section aria-label="Loading metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => <MetricCardSkeleton key={i} />)}
+          </section>
+        )}
         {baselines.error && <ErrorState error={baselines.error} onRetry={baselines.reload} />}
         {baselines.data && (
           <>
-            <DataQualityStatus metrics={baselines.data.metrics} date={baselines.data.date} />
             <section aria-label="Metrics for the selected day" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {baselines.data.metrics.map((b) => (
                 <MetricCard
@@ -178,9 +194,11 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
                   baseline={b}
                   onCorrect={(value) => correct(b.metric, value)}
                   highlighted={insightMetrics.includes(b.metric)}
+                  history={observations.data?.observations}
                 />
               ))}
             </section>
+            <DataQualityStatus metrics={baselines.data.metrics} date={baselines.data.date} />
           </>
         )}
 
