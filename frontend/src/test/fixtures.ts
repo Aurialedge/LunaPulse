@@ -59,6 +59,8 @@ function baseline(overrides: Partial<MetricBaseline>): MetricBaseline {
     interpretation: "more activity than usual",
     day_over_day: 120,
     week_over_week: -40.5,
+    goal_value: null,
+    goal_progress_percent: null,
     ...overrides,
   };
 }
@@ -67,9 +69,10 @@ export const baselines: BaselinesResponse = {
   user_id: "user_a",
   date: "2026-06-30",
   metrics: [
-    baseline({}),
+    baseline({ goal_value: 10000, goal_progress_percent: 100 }),
     baseline({
       metric: "sleep_hours", label: "Sleep", unit: "hours", observed_value: 5.17, median: 6.59,
+      goal_value: 7.5, goal_progress_percent: 68.9,
       absolute_difference: -1.42, percentage_difference: -21.5, direction: "below", interpretation: "shorter sleep duration",
     }),
     baseline({

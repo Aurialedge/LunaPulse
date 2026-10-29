@@ -1,7 +1,7 @@
 import { RefreshCw, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
-import type { FeedbackAction, Feed } from "../api/types";
+import type { FeedbackAction, Feed, Metric } from "../api/types";
 import { formatDateTime } from "../format";
 import { useAsync } from "../hooks/useAsync";
 import { ProviderBadge } from "./Header";
@@ -12,10 +12,11 @@ interface Props {
   userId: string;
   date: string;
   version: number; // bumped by the page when data changes (scenario, correction)
+  onInsightMetrics?: (metrics: Metric[]) => void; // which metrics the visible insights are about
 }
 
 /** Up to three ranked insights for the selected day, with generate / regenerate. */
-export function InsightFeed({ userId, date, version }: Props) {
+export function InsightFeed({ userId, date, version, onInsightMetrics }: Props) {
   const [showHidden, setShowHidden] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const { data: feed, loading, error, reload } = useAsync(
@@ -25,6 +26,10 @@ export function InsightFeed({ userId, date, version }: Props) {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<ApiError | null>(null);
   const notGenerated = error?.code === "insights_not_generated";
+
+  useEffect(() => {
+    onInsightMetrics?.([...new Set(feed?.insights.flatMap((i) => i.metrics) ?? [])]);
+  }, [feed, onInsightMetrics]);
 
   async function generate(force: boolean) {
     setGenerating(true);

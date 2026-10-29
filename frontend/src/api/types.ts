@@ -92,6 +92,8 @@ export interface MetricBaseline {
   interpretation: string;
   day_over_day: number | null;
   week_over_week: number | null;
+  goal_value: number | null; // steps and sleep only
+  goal_progress_percent: number | null; // computed by the backend, capped at 100
 }
 
 export interface BaselinesResponse {

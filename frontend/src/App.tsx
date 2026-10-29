@@ -108,6 +108,7 @@ interface DashboardProps {
 function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChange, onDateChange, onDataRegenerated }: DashboardProps) {
   // Bumped whenever this user's data changes, so every panel re-fetches from the backend.
   const [version, setVersion] = useState(0);
+  const [insightMetrics, setInsightMetrics] = useState<Metric[]>([]);
   const baselines = useAsync(() => api.baselines(user.user_id, date), [user.user_id, date, version, user.data_end]);
   const observations = useAsync(() => api.observations(user.user_id, date), [user.user_id, date, version, user.data_end]);
 
@@ -151,7 +152,12 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
               <DataQualityStatus metrics={baselines.data.metrics} date={baselines.data.date} />
               <section aria-label="Metrics for the selected day" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {baselines.data.metrics.map((b) => (
-                  <MetricCard key={b.metric} baseline={b} onCorrect={(value) => correct(b.metric, value)} />
+                  <MetricCard
+                    key={b.metric}
+                    baseline={b}
+                    onCorrect={(value) => correct(b.metric, value)}
+                    highlighted={insightMetrics.includes(b.metric)}
+                  />
                 ))}
               </section>
             </>
@@ -164,7 +170,7 @@ function Dashboard({ users, user, date, scenarios, tab, onTabChange, onUserChang
 
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <InsightFeed userId={user.user_id} date={date} version={version} />
+              <InsightFeed userId={user.user_id} date={date} version={version} onInsightMetrics={setInsightMetrics} />
             </div>
             <NotesPanel userId={user.user_id} date={date} version={version} />
           </div>

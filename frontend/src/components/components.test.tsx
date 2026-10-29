@@ -60,6 +60,24 @@ describe("MetricCard", () => {
     await waitFor(() => expect(screen.queryByLabelText(/Corrected value/)).not.toBeInTheDocument());
   });
 
+  it("shows a goal ring from the backend progress", () => {
+    render(<MetricCard baseline={{ ...steps, goal_value: 9000, goal_progress_percent: 95.3 }} onCorrect={vi.fn()} />);
+    expect(screen.getByLabelText("95.3% of goal")).toBeInTheDocument();
+    expect(screen.getByText("goal 9,000 steps")).toBeInTheDocument();
+  });
+
+  it("metrics without a goal show no ring", () => {
+    render(<MetricCard baseline={rhr} onCorrect={vi.fn()} />);
+    expect(screen.queryByLabelText(/of goal/)).not.toBeInTheDocument();
+  });
+
+  it("highlights tiles named by a current insight", () => {
+    const { rerender } = render(<MetricCard baseline={sleep} onCorrect={vi.fn()} />);
+    expect(screen.getByTestId("metric-sleep_hours")).toHaveAttribute("data-highlighted", "false");
+    rerender(<MetricCard baseline={sleep} onCorrect={vi.fn()} highlighted />);
+    expect(screen.getByTestId("metric-sleep_hours")).toHaveAttribute("data-highlighted", "true");
+  });
+
   it("rejects non-numbers before calling the backend", async () => {
     const onCorrect = vi.fn();
     render(<MetricCard baseline={sleep} onCorrect={onCorrect} />);
@@ -181,6 +199,13 @@ describe("InsightFeed", () => {
     render(<InsightFeed userId="user_a" date="2026-06-30" version={0} />);
     await userEvent.click(await screen.findByRole("button", { name: "Regenerate insights" }));
     expect(generate).toHaveBeenCalledWith("user_a", "2026-06-30", true);
+  });
+
+  it("reports the metrics of the visible insights", async () => {
+    vi.spyOn(api, "feed").mockResolvedValue(feed);
+    const onInsightMetrics = vi.fn();
+    render(<InsightFeed userId="user_a" date="2026-06-30" version={0} onInsightMetrics={onInsightMetrics} />);
+    await waitFor(() => expect(onInsightMetrics).toHaveBeenLastCalledWith(["sleep_hours"]));
   });
 
   it("shows the empty state when the data is stable", async () => {
