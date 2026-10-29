@@ -3,8 +3,39 @@
 The synthetic data LunaPulse generates, exported as CSV so it can be read without running the app. **All data is synthetic.**
 
 - **Contents:** 4 users × 120 days (2026-03-03 to 2026-06-30), seed 42, each user's default scenario.
-- **Same data in the app:** the app generates identical data on first start, except that it ends on each user's local today.
-- **Regenerate:** run `python -m scripts.export_sample_data` from `backend/`. The output is byte-identical every time.
+- **The app doesn't import these files:** it generates its own data on first start, with the same generator and seed, ending on each user's local today. Because steps follow the weekday/weekend pattern, a different end date gives different step values, so the startup data isn't identical to these files.
+- **Regenerate the CSVs:** run `python -m scripts.export_sample_data` from `backend/`. The output is byte-identical every time.
+
+### Load exactly this data into the app
+
+With the backend running, regenerate each user with `end_date` 2026-06-30. The app's database then matches these CSVs reading for reading:
+
+```powershell
+# PowerShell
+foreach ($u in @(@("user_a","stable_baseline"), @("user_b","reduced_sleep"), @("user_c","gradual_trend"), @("user_d","stable_baseline"))) {
+  Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/v1/simulation/generate -ContentType "application/json" `
+    -Body (@{ user_id = $u[0]; scenario = $u[1]; end_date = "2026-06-30" } | ConvertTo-Json)
+}
+```
+
+```bash
+# Git Bash / macOS / Linux
+for u in user_a:stable_baseline user_b:reduced_sleep user_c:gradual_trend user_d:stable_baseline; do
+  curl -s -X POST localhost:8000/api/v1/simulation/generate -H 'Content-Type: application/json' \
+    -d "{\"user_id\":\"${u%%:*}\",\"scenario\":\"${u##*:}\",\"end_date\":\"2026-06-30\"}"; echo
+done
+```
+
+Then pick a date in the dashboard and press **Generate insights**. On this data you should see:
+- **User A** (2026-06-30): no insights.
+- **User B** (2026-06-30): a sleep deviation.
+- **User C** (2026-06-30): an improving steps trend.
+- **User D:**
+  - 2026-06-27: a low-confidence resting-heart-rate insight flagged as a possible measurement artefact.
+  - 2026-06-29: a data-quality warning about the conflicting HRV readings.
+  - 2026-06-30: no insight from the injection note.
+
+To go back to the default data, stop the backend, delete `backend/lunapulse.db`, and start it again.
 
 | File | Columns |
 |---|---|
