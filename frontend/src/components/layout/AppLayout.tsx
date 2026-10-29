@@ -10,11 +10,12 @@ interface Props {
   onNavigate: (target: NavTarget) => void;
   health: Health | null;
   topBar?: ReactNode;
+  toaster?: ReactNode;
   children: ReactNode;
 }
 
 /** Sidebar on large screens; a compact header with a navigation drawer below that. */
-export function AppLayout({ view, onNavigate, health, topBar, children }: Props) {
+export function AppLayout({ view, onNavigate, health, topBar, toaster, children }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   function navigate(target: NavTarget) {
@@ -53,6 +54,7 @@ export function AppLayout({ view, onNavigate, health, topBar, children }: Props)
           {children}
         </main>
       </div>
+      {toaster}
     </div>
   );
 }

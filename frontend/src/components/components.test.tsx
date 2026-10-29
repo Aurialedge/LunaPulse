@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Toaster } from "sonner";
 import { api, ApiError } from "../api/client";
 import { baselines, evidence, feed, insight, observations } from "../test/fixtures";
 import { DataQualityStatus } from "./DataQualityStatus";
@@ -209,11 +210,31 @@ describe("InsightCard and evidence", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on the server.");
   });
 
-  it("sends feedback", async () => {
-    const onFeedback = vi.fn().mockResolvedValue(undefined);
-    render(<InsightCard insight={insight} onFeedback={onFeedback} />);
-    await userEvent.click(screen.getByRole("button", { name: "Not relevant" }));
+  it("cards show the evidence summary from the evidence endpoint", async () => {
+    vi.spyOn(api, "evidence").mockResolvedValue(evidence);
+    render(<InsightCard insight={insight} onFeedback={vi.fn()} />);
+    const summary = await screen.findByTestId("evidence-summary");
+    await within(summary).findByText("5.17 h");
+    expect(within(summary).getByText("6.59 h")).toBeInTheDocument();
+    expect(within(summary).getByText(/−1.42 h/)).toBeInTheDocument();
+    expect(within(summary).getByText(/−21.5%/)).toBeInTheDocument();
+    expect(within(summary).getByText("Tue, 30 Jun 2026")).toBeInTheDocument();
+  });
+
+  it("feedback sends one request and confirms", async () => {
+    vi.spyOn(api, "evidence").mockResolvedValue(evidence);
+    let finish: () => void = () => {};
+    const onFeedback = vi.fn().mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+    render(<><Toaster /><InsightCard insight={insight} onFeedback={onFeedback} /></>);
+    await userEvent.click(screen.getByRole("button", { name: "Insight actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Not relevant" }));
+    await userEvent.click(screen.getByRole("button", { name: "Insight actions" }));
+    expect(await screen.findByRole("menuitem", { name: "Not relevant" })).toHaveAttribute("data-disabled");
+    expect(onFeedback).toHaveBeenCalledTimes(1);
     expect(onFeedback).toHaveBeenCalledWith("ins_1", "irrelevant");
+    expect(screen.queryByText("Marked as not relevant")).not.toBeInTheDocument(); // nothing before the backend confirms
+    finish();
+    expect(await screen.findByText("Marked as not relevant")).toBeInTheDocument();
   });
 });
 
@@ -222,10 +243,10 @@ describe("InsightFeed", () => {
     vi.spyOn(api, "evidence").mockResolvedValue(evidence);
   });
 
-  it("shows a loading state, then the insights", async () => {
+  it("insight skeletons while loading, then the insights", async () => {
     vi.spyOn(api, "feed").mockResolvedValue(feed);
     render(<InsightFeed userId="user_a" date="2026-06-30" version={0} />);
-    expect(screen.getByRole("status")).toHaveTextContent("Loading insights");
+    expect(screen.getAllByTestId("insight-skeleton").length).toBeGreaterThan(0);
     expect(await screen.findAllByTestId("insight-card")).toHaveLength(1);
     expect(screen.getByText("Template explanation")).toBeInTheDocument();
     expect(screen.getByText(/no Gemini API key is configured/)).toBeInTheDocument();
@@ -276,7 +297,17 @@ describe("InsightFeed", () => {
   it("shows the empty state when the data is stable", async () => {
     vi.spyOn(api, "feed").mockResolvedValue({ ...feed, insights: [], candidates: [], provider: "none", fallback_reason: null });
     render(<InsightFeed userId="user_a" date="2026-06-30" version={0} />);
-    expect(await screen.findByText("Nothing notable for this day")).toBeInTheDocument();
+    expect(await screen.findByText("No notable insights for this date")).toBeInTheDocument();
+    expect(screen.getByText("Your available data did not produce a sufficiently supported insight for this period.")).toBeInTheDocument();
+  });
+
+  it("backend order is preserved", async () => {
+    const second = { ...insight, insight_id: "ins_2", rank: 2, explanation: { ...insight.explanation, insight_id: "ins_2", title: "Second by rank" } };
+    vi.spyOn(api, "feed").mockResolvedValue({ ...feed, insights: [second, insight] });
+    render(<InsightFeed userId="user_a" date="2026-06-30" version={0} />);
+    const cards = await screen.findAllByTestId("insight-card");
+    expect(within(cards[0]).getByRole("heading")).toHaveTextContent("Second by rank");
+    expect(within(cards[1]).getByRole("heading")).toHaveTextContent("Sleep: shorter sleep duration");
   });
 
   it("shows API errors with a retry", async () => {
@@ -298,7 +329,8 @@ describe("InsightFeed", () => {
       .mockResolvedValue({ ...feed, insights: [{ ...insight, feedback: "dismissed" as const }], hidden_count: 1 });
     const send = vi.spyOn(api, "feedback").mockResolvedValue({ id: 1, insight_id: "ins_1", action: "dismissed", created_at: "" });
     render(<InsightFeed userId="user_a" date="2026-06-30" version={0} />);
-    await userEvent.click(await screen.findByRole("button", { name: "Dismiss" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Insight actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Dismiss" }));
     expect(send).toHaveBeenCalledWith("ins_1", "dismissed");
     expect(await screen.findByText("All insights for this day are hidden")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Show 1 hidden insight(s)" }));

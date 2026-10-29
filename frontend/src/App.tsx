@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Toaster } from "sonner";
 import { api } from "./api/client";
 import type { Health, Metric, Scenario, User } from "./api/types";
 import { DataEditor, type Edits } from "./components/DataEditor";
@@ -134,6 +135,7 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
       view={view}
       onNavigate={onNavigate}
       health={health}
+      toaster={<Toaster position="bottom-right" closeButton />}
       topBar={
         <TopBar
           title={view === "edit" ? "Edit data" : "Overview"}

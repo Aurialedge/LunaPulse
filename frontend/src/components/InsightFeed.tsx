@@ -5,7 +5,9 @@ import type { FeedbackAction, Feed, Metric } from "../api/types";
 import { formatDateTime } from "../format";
 import { useAsync } from "../hooks/useAsync";
 import { Badge } from "@/components/ui/badge";
-import { InsightCard } from "./InsightCard";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InsightCard, InsightCardSkeleton } from "./InsightCard";
 import { EmptyState, ErrorState, LoadingState } from "./StateViews";
 
 interface Props {
@@ -61,38 +63,43 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
   const visibleCount = feed?.insights.length ?? 0;
 
   return (
-    <section aria-labelledby="feed-title" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <h2 id="feed-title" className="text-lg font-semibold">Top insights for {date}</h2>
+    <section aria-labelledby="feed-title" className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-1.5">
+          <h2 id="feed-title" className="text-xl font-semibold tracking-tight">Top insights for {date}</h2>
           {feed && (
-            <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+            <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <ProviderBadge provider={feed.provider} reason={feed.fallback_reason} />
-              Generated {formatDateTime(feed.generated_at)} · rules {feed.rule_version}
+              Generated {formatDateTime(feed.generated_at)} · rules {feed.rule_version} · ranked by the backend, at most 3
             </p>
           )}
         </div>
-        <button type="button" className="btn-primary" disabled={generating || loading} onClick={() => generate(Boolean(feed))}>
-          <ButtonIcon className="size-4" aria-hidden />
+        <Button disabled={generating || loading} onClick={() => generate(Boolean(feed))}>
+          <ButtonIcon aria-hidden />
           {generating ? "Generating…" : buttonLabel}
-        </button>
+        </Button>
       </div>
 
       {generating && <LoadingState label="Calculating evidence and writing explanations (Gemini can take up to 30 seconds)…" />}
       {generateError && <ErrorState error={generateError} />}
 
-      {!generating && loading && <LoadingState label="Loading insights…" />}
+      {!generating && loading && (
+        <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading insights">
+          <InsightCardSkeleton />
+          <InsightCardSkeleton />
+        </div>
+      )}
       {!generating && !loading && notGenerated && (
         <EmptyState title="No insights generated for this day yet">
           Press <strong>Generate insights</strong> to run the analysis for {date}.
         </EmptyState>
       )}
       {!generating && !loading && outdated && (
-        <div className="flex items-start gap-3 rounded-2xl border border-violet-400/40 bg-violet-500/10 p-4 text-sm shadow-[0_0_24px_-8px_rgb(139_92_246/0.6)]">
-          <TimerReset className="mt-0.5 size-5 shrink-0 text-violet-300" aria-hidden />
+        <div className="flex items-start gap-3 rounded-lg border border-primary/25 bg-primary/5 p-4 text-sm">
+          <TimerReset className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
           <div>
-            <p className="font-medium text-violet-100">Data changed since these insights were made</p>
-            <p className="text-ink-soft">
+            <p className="font-medium">Data changed since these insights were made</p>
+            <p className="text-muted-foreground">
               The old insights for {date} are hidden because their data changed. Press <strong>Recalculate insights</strong>{" "}
               to analyse the current data.
             </p>
@@ -104,10 +111,10 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
       {!generating && !loading && feed && (
         <>
           {visibleCount === 0 && (
-            <EmptyState title={feed.hidden_count ? "All insights for this day are hidden" : "Nothing notable for this day"}>
+            <EmptyState title={feed.hidden_count ? "All insights for this day are hidden" : "No notable insights for this date"}>
               {feed.hidden_count
                 ? "You dismissed or flagged every insight."
-                : "Your data stayed within your usual range, so no insight is forced."}
+                : "Your available data did not produce a sufficiently supported insight for this period."}
             </EmptyState>
           )}
           {feed.insights.map((insight, index) => (
@@ -120,9 +127,9 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
             />
           ))}
           {(feed.hidden_count > 0 || showHidden) && (
-            <button type="button" className="btn-secondary self-start" onClick={() => setShowHidden((v) => !v)}>
+            <Button variant="outline" size="sm" className="self-start" onClick={() => setShowHidden((v) => !v)}>
               {showHidden ? "Hide dismissed insights" : `Show ${feed.hidden_count} hidden insight(s)`}
-            </button>
+            </Button>
           )}
           <CandidateSummary feed={feed} />
         </>
@@ -141,19 +148,21 @@ const STATUS_TEXT: Record<string, string> = {
 function CandidateSummary({ feed }: { feed: Feed }) {
   if (feed.candidates.length === 0) return null;
   return (
-    <details className="card text-sm">
-      <summary className="cursor-pointer font-medium text-ink-soft">All {feed.candidates.length} candidates considered</summary>
+    <Card className="p-0 text-sm">
+      <details className="group px-5 py-3">
+      <summary className="cursor-pointer font-medium text-muted-foreground">All {feed.candidates.length} candidates considered</summary>
       <ul className="mt-2 flex flex-col gap-1">
         {feed.candidates.map((c) => (
-          <li key={c.candidate_id} className="flex flex-wrap gap-x-2 text-ink-muted">
-            <span className="font-mono text-xs text-ink">{c.candidate_id}</span>
+          <li key={c.candidate_id} className="flex flex-wrap gap-x-2 text-muted-foreground">
+            <span className="font-mono text-xs text-foreground">{c.candidate_id}</span>
             <span className="tabular-nums">score {c.score}</span>
             <span>{STATUS_TEXT[c.status] ?? c.status}</span>
             {c.drop_reason && <span className="italic">({c.drop_reason})</span>}
           </li>
         ))}
       </ul>
-    </details>
+      </details>
+    </Card>
   );
 }
 
