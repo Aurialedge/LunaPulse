@@ -1,26 +1,31 @@
-import { ChevronDown, ChevronUp, EyeOff, ThumbsDown } from "lucide-react";
+import { ChevronDown, ChevronUp, EyeOff, Shield, ShieldAlert, ShieldCheck, ThumbsDown } from "lucide-react";
 import { useState } from "react";
 import type { FeedbackAction, Insight } from "../api/types";
 import { CATEGORY_TEXT, METRIC_INFO } from "../format";
 import { EvidencePanel } from "./EvidencePanel";
 
-const CONFIDENCE_STYLE: Record<string, string> = {
-  high: "bg-green-100 text-green-800",
-  medium: "bg-sky-100 text-sky-800",
-  low: "bg-amber-100 text-amber-900",
-};
+/** Confidence comes from the backend (D9). Each label pairs an icon with the word, never colour alone. */
+const CONFIDENCE = {
+  high: { style: "bg-emerald-400/15 text-emerald-200 border-emerald-400/30", Icon: ShieldCheck },
+  medium: { style: "bg-sky-400/15 text-sky-200 border-sky-400/30", Icon: Shield },
+  low: { style: "bg-amber-400/15 text-amber-200 border-amber-400/30", Icon: ShieldAlert },
+} as const;
 
 interface Props {
   insight: Insight;
   onFeedback: (insightId: string, action: FeedbackAction) => Promise<void>;
+  position?: number; // 1-based place in the visible feed
+  total?: number;
 }
 
-export function InsightCard({ insight, onFeedback }: Props) {
+export function InsightCard({ insight, onFeedback, position, total }: Props) {
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const e = insight.explanation;
   const titleId = `insight-${insight.insight_id}`;
+  const confidence = CONFIDENCE[insight.confidence_label];
+  const accent = METRIC_INFO[insight.metrics[0]]?.accent ?? "var(--color-brand)";
 
   async function feedback(action: FeedbackAction) {
     setSending(true);
@@ -34,49 +39,64 @@ export function InsightCard({ insight, onFeedback }: Props) {
   }
 
   return (
-    <article className="card flex flex-col gap-3" aria-labelledby={titleId} data-testid="insight-card">
+    <article
+      className="lp-enter relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-500/[0.12] via-white/[0.03] to-sky-500/[0.06] p-4 shadow-[0_8px_30px_rgb(0_0_0/0.25)]"
+      aria-labelledby={titleId}
+      data-testid="insight-card"
+    >
+      <span className="absolute inset-y-0 left-0 w-1" style={{ background: accent, boxShadow: `0 0 16px ${accent}` }} aria-hidden />
+
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="chip bg-blue-50 text-blue-800">#{insight.rank} · {CATEGORY_TEXT[insight.category] ?? insight.category}</span>
-        <span className="chip bg-slate-100 text-slate-700">{insight.metrics.map((m) => METRIC_INFO[m].label).join(" + ")}</span>
-        <span className={`chip ${CONFIDENCE_STYLE[insight.confidence_label]}`} title="Based on data coverage and reliability, not on the language model">
+        <span className="eyebrow text-violet-200">
+          {position && total ? `Insight ${position} of ${total} · ` : `#${insight.rank} · `}
+          {CATEGORY_TEXT[insight.category] ?? insight.category}
+        </span>
+        <span className="chip border border-line bg-glass text-ink-soft">
+          {insight.metrics.map((m) => METRIC_INFO[m].label).join(" + ")}
+        </span>
+        <span
+          className={`chip border ${confidence.style}`}
+          title="Based on data coverage and reliability, not on the language model"
+        >
+          <confidence.Icon className="size-3.5" aria-hidden />
           {insight.confidence_label} confidence
         </span>
-        <span className="chip bg-white text-slate-500 ring-1 ring-slate-200">
+        <span className="chip border border-line text-ink-muted">
           {insight.explanation_provider === "gemini" ? "Gemini" : "Template"}
         </span>
-        {insight.feedback && <span className="chip bg-slate-200 text-slate-700">Marked {insight.feedback}</span>}
+        {insight.feedback && <span className="chip bg-glass-strong text-ink-soft">Marked {insight.feedback}</span>}
       </div>
 
       <div>
-        <h3 id={titleId} className="text-base font-semibold">{e.title}</h3>
-        <p className="mt-1 text-sm text-slate-700">{e.summary}</p>
+        <h3 id={titleId} className="text-base font-semibold text-ink">{e.title}</h3>
+        <p className="mt-1 text-sm text-ink-soft">{e.summary}</p>
       </div>
 
-      <dl className="grid gap-2 text-sm sm:grid-cols-2">
+      <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <div>
-          <dt className="font-medium text-slate-600">What changed</dt>
-          <dd>{e.what_changed}</dd>
+          <dt className="eyebrow text-ink-muted">What changed</dt>
+          <dd className="mt-0.5 text-ink">{e.what_changed}</dd>
         </div>
         <div>
-          <dt className="font-medium text-slate-600">Why it was selected</dt>
-          <dd>{e.why_it_matters}</dd>
+          <dt className="eyebrow text-ink-muted">Why it was selected</dt>
+          <dd className="mt-0.5 text-ink">{e.why_it_matters}</dd>
         </div>
         {e.possible_context && (
           <div>
-            <dt className="font-medium text-slate-600">Possible context (not a fact)</dt>
-            <dd className="text-slate-600">{e.possible_context}</dd>
+            <dt className="eyebrow text-ink-muted">Possible context (not a fact)</dt>
+            <dd className="mt-0.5 text-ink-soft">{e.possible_context}</dd>
           </div>
         )}
         {e.limitations.length > 0 && (
           <div>
-            <dt className="font-medium text-slate-600">Limitations</dt>
-            <dd>
-              <ul className="list-disc pl-5 text-slate-600">{e.limitations.map((l) => <li key={l}>{l}</li>)}</ul>
+            <dt className="eyebrow text-ink-muted">Limitations</dt>
+            <dd className="mt-0.5">
+              <ul className="list-disc pl-5 text-ink-soft">{e.limitations.map((l) => <li key={l}>{l}</li>)}</ul>
             </dd>
           </div>
         )}
       </dl>
-      {e.suggested_reflection && <p className="text-sm italic text-slate-600">{e.suggested_reflection}</p>}
+      {e.suggested_reflection && <p className="text-sm italic text-ink-muted">{e.suggested_reflection}</p>}
 
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="btn-secondary" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
@@ -93,7 +113,7 @@ export function InsightCard({ insight, onFeedback }: Props) {
             </button>
           </>
         )}
-        {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+        {error && <p role="alert" className="text-xs text-rose-300">{error}</p>}
       </div>
       {open && <EvidencePanel insight={insight} />}
     </article>

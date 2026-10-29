@@ -159,6 +159,16 @@ describe("InsightCard and evidence", () => {
     expect(within(panel).getByText(/Score 0.6697/)).toBeInTheDocument();
   });
 
+  it("trend evidence says a standardized score is not used, rather than unreliable", async () => {
+    vi.spyOn(api, "evidence").mockResolvedValue([
+      { ...evidence[0], comparison: "recent_7_day_median_vs_baseline", standardized_score: null, score_method: null },
+    ]);
+    render(<InsightCard insight={insight} onFeedback={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Why am I seeing this?" }));
+    expect(await screen.findByText("not used for 7-day trends")).toBeInTheDocument();
+    expect(screen.queryByText(/too little variation/)).not.toBeInTheDocument();
+  });
+
   it("shows an error if the evidence cannot load", async () => {
     vi.spyOn(api, "evidence").mockRejectedValue(new ApiError(500, "internal_error", "Something went wrong on the server."));
     render(<InsightCard insight={insight} onFeedback={vi.fn()} />);
@@ -200,6 +210,19 @@ describe("InsightFeed", () => {
     expect(generate).toHaveBeenCalledWith("user_a", "2026-06-30", false);
     expect(await screen.findAllByTestId("insight-card")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Regenerate insights" })).toBeInTheDocument();
+  });
+
+  it("outdated insights offer recalculation", async () => {
+    vi.spyOn(api, "feed")
+      .mockRejectedValueOnce(new ApiError(404, "insights_outdated", "The data for 2026-06-30 changed since its insights were made."))
+      .mockResolvedValue(feed);
+    const generate = vi.spyOn(api, "generateInsights").mockResolvedValue(feed);
+    render(<InsightFeed userId="user_a" date="2026-06-30" version={0} />);
+    expect(await screen.findByText("Data changed since these insights were made")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument(); // not an error
+    await userEvent.click(screen.getByRole("button", { name: "Recalculate insights" }));
+    expect(generate).toHaveBeenCalledWith("user_a", "2026-06-30", false);
+    expect(await screen.findAllByTestId("insight-card")).toHaveLength(1);
   });
 
   it("regenerate forces a new run", async () => {

@@ -1,4 +1,4 @@
-import { RefreshCw, Sparkles } from "lucide-react";
+import { RefreshCw, Sparkles, TimerReset } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { FeedbackAction, Feed, Metric } from "../api/types";
@@ -11,11 +11,11 @@ import { EmptyState, ErrorState, LoadingState } from "./StateViews";
 interface Props {
   userId: string;
   date: string;
-  version: number; // bumped by the page when data changes (scenario, correction)
+  version: number; // bumped by the page when data changes (scenario, correction, data editor)
   onInsightMetrics?: (metrics: Metric[]) => void; // which metrics the visible insights are about
 }
 
-/** Up to three ranked insights for the selected day, with generate / regenerate. */
+/** Up to three ranked insights for the selected day, with generate / regenerate / recalculate. */
 export function InsightFeed({ userId, date, version, onInsightMetrics }: Props) {
   const [showHidden, setShowHidden] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -26,6 +26,7 @@ export function InsightFeed({ userId, date, version, onInsightMetrics }: Props) 
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<ApiError | null>(null);
   const notGenerated = error?.code === "insights_not_generated";
+  const outdated = error?.code === "insights_outdated"; // the data changed after these insights were made (D30)
 
   useEffect(() => {
     onInsightMetrics?.([...new Set(feed?.insights.flatMap((i) => i.metrics) ?? [])]);
@@ -50,21 +51,25 @@ export function InsightFeed({ userId, date, version, onInsightMetrics }: Props) 
     reload();
   }
 
+  const buttonLabel = outdated ? "Recalculate insights" : feed ? "Regenerate insights" : "Generate insights";
+  const ButtonIcon = outdated ? TimerReset : feed ? RefreshCw : Sparkles;
+  const visibleCount = feed?.insights.length ?? 0;
+
   return (
     <section aria-labelledby="feed-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
+        <div className="flex flex-col gap-1">
           <h2 id="feed-title" className="text-lg font-semibold">Top insights for {date}</h2>
           {feed && (
-            <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
               <ProviderBadge provider={feed.provider} reason={feed.fallback_reason} />
               Generated {formatDateTime(feed.generated_at)} · rules {feed.rule_version}
             </p>
           )}
         </div>
         <button type="button" className="btn-primary" disabled={generating || loading} onClick={() => generate(Boolean(feed))}>
-          {feed ? <RefreshCw className="size-4" aria-hidden /> : <Sparkles className="size-4" aria-hidden />}
-          {generating ? "Generating…" : feed ? "Regenerate insights" : "Generate insights"}
+          <ButtonIcon className="size-4" aria-hidden />
+          {generating ? "Generating…" : buttonLabel}
         </button>
       </div>
 
@@ -77,19 +82,37 @@ export function InsightFeed({ userId, date, version, onInsightMetrics }: Props) 
           Press <strong>Generate insights</strong> to run the analysis for {date}.
         </EmptyState>
       )}
-      {!generating && !loading && error && !notGenerated && <ErrorState error={error} onRetry={reload} />}
+      {!generating && !loading && outdated && (
+        <div className="flex items-start gap-3 rounded-2xl border border-violet-400/40 bg-violet-500/10 p-4 text-sm shadow-[0_0_24px_-8px_rgb(139_92_246/0.6)]">
+          <TimerReset className="mt-0.5 size-5 shrink-0 text-violet-300" aria-hidden />
+          <div>
+            <p className="font-medium text-violet-100">Data changed since these insights were made</p>
+            <p className="text-ink-soft">
+              The old insights for {date} are hidden because their data changed. Press <strong>Recalculate insights</strong>{" "}
+              to analyse the current data.
+            </p>
+          </div>
+        </div>
+      )}
+      {!generating && !loading && error && !notGenerated && !outdated && <ErrorState error={error} onRetry={reload} />}
 
       {!generating && !loading && feed && (
         <>
-          {feed.insights.length === 0 && (
+          {visibleCount === 0 && (
             <EmptyState title={feed.hidden_count ? "All insights for this day are hidden" : "Nothing notable for this day"}>
               {feed.hidden_count
                 ? "You dismissed or flagged every insight."
                 : "Your data stayed within your usual range, so no insight is forced."}
             </EmptyState>
           )}
-          {feed.insights.map((insight) => (
-            <InsightCard key={insight.insight_id} insight={insight} onFeedback={sendFeedback} />
+          {feed.insights.map((insight, index) => (
+            <InsightCard
+              key={insight.insight_id}
+              insight={insight}
+              position={index + 1}
+              total={visibleCount}
+              onFeedback={sendFeedback}
+            />
           ))}
           {(feed.hidden_count > 0 || showHidden) && (
             <button type="button" className="btn-secondary self-start" onClick={() => setShowHidden((v) => !v)}>
@@ -114,11 +137,11 @@ function CandidateSummary({ feed }: { feed: Feed }) {
   if (feed.candidates.length === 0) return null;
   return (
     <details className="card text-sm">
-      <summary className="cursor-pointer font-medium">All {feed.candidates.length} candidates considered</summary>
+      <summary className="cursor-pointer font-medium text-ink-soft">All {feed.candidates.length} candidates considered</summary>
       <ul className="mt-2 flex flex-col gap-1">
         {feed.candidates.map((c) => (
-          <li key={c.candidate_id} className="flex flex-wrap gap-x-2 text-slate-600">
-            <span className="font-mono text-xs text-slate-800">{c.candidate_id}</span>
+          <li key={c.candidate_id} className="flex flex-wrap gap-x-2 text-ink-muted">
+            <span className="font-mono text-xs text-ink">{c.candidate_id}</span>
             <span className="tabular-nums">score {c.score}</span>
             <span>{STATUS_TEXT[c.status] ?? c.status}</span>
             {c.drop_reason && <span className="italic">({c.drop_reason})</span>}
