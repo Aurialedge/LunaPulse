@@ -55,17 +55,23 @@ npm install
 npm run dev                          # http://localhost:5173
 ```
 
-On **Windows PowerShell**, `source` doesn't exist. After the same first-time setup (`python -m venv .venv`, then `.venv\Scripts\python.exe -m pip install -r requirements.txt` and `npm install`), call the venv's Python directly so no activation is needed:
+**Windows PowerShell** has no `source`, so call the virtual environment's Python directly. No activation is needed:
 
 ```powershell
-# Window 1: backend
+# Window 1: backend (from the repository root)
 cd backend
+python -m venv .venv                                         # first time only
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt  # first time only
+Copy-Item .env.example .env                                  # optional: add GEMINI_API_KEY; leave it empty for fallback mode
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 
-# Window 2: frontend
+# Window 2: frontend (from the repository root)
 cd frontend
-npm run dev                          # http://localhost:5173
+npm install                                                  # first time only
+npm run dev                                                  # http://localhost:5173
 ```
+
+Then open **http://localhost:5173**.
 
 On first start the backend creates `backend/lunapulse.db` and seeds users A–D: 120 days each, seed 42, ending at each user's local "today". To reseed from scratch, delete the file. The API's interactive docs are at http://localhost:8000/docs.
 
