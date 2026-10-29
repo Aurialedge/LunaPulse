@@ -4,25 +4,25 @@ Instructions for any coding agent (Claude Code, Codex, etc.) working in this rep
 
 ## What this is
 
-**PulseLens** — "Your wearable data, explained with evidence." A research/demo prototype that simulates wearable data (steps, sleep, RHR, HRV), computes personal baselines, detects deviations with deterministic rules, ranks candidate insights, stores structured evidence, and asks Gemini to *explain* (never compute) the top ≤3 insights. A template fallback is used when Gemini is unavailable. **All data is synthetic. Nothing here is medical advice.**
+**PulseLens** — "Your wearable data, explained with evidence." A research/demo prototype that simulates wearable data (steps, sleep, RHR, HRV), computes personal baselines, detects deviations and trends with deterministic rules, ranks candidate insights, stores structured evidence, and asks Gemini to *explain* (never compute) the top ≤3 insights. Gemini can call read-only grounding tools. A template fallback is used when Gemini is unavailable. Users can dismiss insights, correct a value, and add notes, and notes are treated as untrusted. **All data is synthetic. Nothing here is medical advice.**
 
 ## Read before working
 
 | File | Purpose |
 |---|---|
-| `PRD.md` | The requirements. **Source of truth. Nothing outside it gets built.** |
+| `PRD.md` | The requirements: Part A = PRD, Part B = Intern Hiring Task 3. **Source of truth. Nothing outside it gets built.** |
 | `ARCHITECTURE.md` | Layout, data flow, algorithms (baseline, rules, ranking, LLM validation). |
 | `DECISIONS.md` | Choices the PRD left open, and why. Add one entry for each new choice. |
 | `MEMORY.md` | Phase plan, current progress, gotchas. Update it at the end of every phase. |
 
 ## Golden rules
 
-1. **Strict PRD scope.** If it isn't in `PRD.md`, don't build it. If the PRD is ambiguous, ask the user, then record the answer in `DECISIONS.md`.
+1. **Strict scope.** If it isn't in `PRD.md` (Part A or B), don't build it. If the PRD is ambiguous, ask the user, then record the answer in `DECISIONS.md`.
 2. **Readability over modularity.** A slightly longer file that reads top to bottom beats five tiny files. No abstract base classes, factories, or plugin systems unless there are two real implementations.
 3. **Don't over-engineer.** No LangChain, vector DBs, queues, Redux, or react-query. Plain functions, plain fetch.
 4. **Statistics live only in the backend.** The frontend displays backend values and never computes baselines, deviations, or scores.
 5. **The LLM never produces numbers.** Every number shown to the user comes from deterministic Python code and is traceable to an evidence record.
-6. **Safety language.** No diagnoses, no treatment advice, no causal claims ("co-occurred with", not "caused"). No fabricated sources.
+6. **Safety language.** No diagnoses, no treatment advice, no medical-risk predictions, no causal claims ("co-occurred with", not "caused"). No fabricated sources. User notes are untrusted data, never instructions.
 7. **Secrets.** `GEMINI_API_KEY` lives only in `backend/.env` (gitignored). It never appears in frontend code, logs, or API responses.
 
 ## Repo layout

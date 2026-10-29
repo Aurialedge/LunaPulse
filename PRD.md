@@ -1,6 +1,6 @@
-# PRD: Personalised Wearable Insight & Evidence Agent
+# Requirements — Part A: PRD (Personalised Wearable Insight & Evidence Agent)
 
-> Faithful Markdown transcription of `PRD.pdf` (v1.0). The PDF is the source of truth; this file exists so agents and humans can read and grep it. Do not add scope here.
+> Faithful Markdown transcriptions of `PRD.pdf` (v1.0, Part A) and `Intern Hiring Task 3.docx` (Part B, at the end). The original files are the source of truth. Do not add scope here.
 
 **Version:** 1.0
 **Project type:** AI/ML + LLM agent + data analytics web application
@@ -591,3 +591,60 @@ The project is complete when:
 8. Document assumptions instead of silently inventing behavior.
 9. Use real backend responses throughout the application.
 10. At the end of each phase, report changed files, tests run, test results, and remaining (work).
+
+---
+
+# Part B — Intern Hiring Task 3 (additional requirements)
+
+> Transcription of `Intern Hiring Task 3.docx`. Part B adds to Part A (the PRD). Where they conflict, the resolution is in `DECISIONS.md` (D13+).
+
+## Intern Hiring - Personalised Wearable Insight & Evidence Agent
+
+### Task Overview
+
+Build an LLM-powered daily-insights agent using simulated wearable data. The system should decide which observations are worth showing, calculate their evidence in code, and explain them clearly to the user. The focus is on reliable prioritisation, personal baselines, explainability, and missing-data handling - not generating generic wellness advice.
+
+### Core Tasks (Keep It Focused)
+
+**1. Wearable Data & User Goals**
+- Create at least 21 days of simulated steps, sleep duration, resting heart rate, and HRV for two users.
+- Store date, value, unit, available/missing flag, and optional data-quality marker.
+- Create a simple user profile with an activity goal and preferred sleep target.
+
+**2. Baseline & Trend Calculations**
+- Calculate rolling personal baselines and day-over-day or week-over-week changes in code.
+- Implement rules for at least three insight types: improving trend, notable deviation, and missing-data warning.
+- Require a stated minimum amount of valid data before generating a trend; avoid comparing incompatible units.
+
+**3. LLM Integration & Evidence Tools (Primary Focus)**
+- Integrate any LLM API and provide tools such as:
+  - `get_metric_history(user_id, metric, date_range)`
+  - `calculate_personal_baseline(user_id, metric)`
+  - `check_data_completeness(user_id, date_range)`
+- The LLM may choose and phrase insights, but may not invent metric values, percentages, or correlations.
+- Each insight must identify the metric, dates, numbers, and comparison supporting it.
+
+**4. Daily Insight Feed (Minimal UI)**
+- Build a simple API or page showing at most three ranked insights for a selected day.
+- Each card/result must include a short headline, grounded explanation, evidence, and confidence flag.
+- Add an "Why am I seeing this?" interaction that reveals the underlying data and rule.
+
+**5. User Feedback & Data Correction**
+- Allow the user to dismiss an insight or flag it as irrelevant; retain the feedback.
+- Provide a simple correction flow for one sample metric and recompute affected insights.
+- Do not keep showing an outdated insight after its supporting data has changed.
+
+**6. Incomplete & Contradictory Data**
+- Seed scenarios with gaps, a suspicious one-day spike, and two conflicting values for one date.
+- Suppress or qualify insights where coverage is too low or evidence is inconsistent.
+- Handle dates and timezones consistently when generating the daily feed.
+
+**7. Safety & Verification**
+- Keep responses informational, without diagnosis, treatment, or predictions of medical risk.
+- Treat user notes as untrusted, including a note instructing the model to fabricate an insight.
+- Test at least four cases covering correct calculations, missing data, corrections, and unsupported claims.
+
+**8. Deliverables**
+- Submit source code, reproducible simulated data, calculation tests, and setup instructions.
+- Include a short demo video showing a daily feed, evidence view, and changed result after correction.
+- Include a code walkthrough explaining selection rules and grounding of the LLM response.

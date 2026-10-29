@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
   subgraph Frontend [frontend/ React + Vite]
-    UI[Dashboard<br/>metric cards · charts · insight cards · evidence panels]
+    UI[Dashboard<br/>metric cards · charts · insight feed · Why am I seeing this? · notes · corrections]
     API_CLIENT[src/api/client.ts]
     UI --> API_CLIENT
   end
@@ -14,56 +14,63 @@ flowchart LR
     ROUTES[app/api/*  /api/v1]
     PIPE[pipeline.py<br/>15-step daily workflow]
     SIM[simulation.py]
-    VAL[validation.py]
+    OBS[observations.py<br/>readings → daily observation]
     BASE[baselines.py]
     CAND[candidates.py]
     RANK[ranking.py]
     EVID[evidence.py]
-    EXPL[explanations.py<br/>Gemini + claim check + fallback]
+    EXPL[explanations.py<br/>Gemini + tools + claim check + fallback]
+    TOOLS[tools.py<br/>get_metric_history · calculate_personal_baseline · check_data_completeness]
     DB[(SQLite via SQLAlchemy)]
-    ROUTES --> SIM --> VAL --> DB
+    ROUTES --> SIM --> DB
     ROUTES --> PIPE
-    PIPE --> BASE --> CAND --> RANK --> EVID --> EXPL
+    PIPE --> OBS --> BASE --> CAND --> RANK --> EVID --> EXPL
+    EXPL <--> TOOLS
+    TOOLS --> OBS
     PIPE <--> DB
   end
 
   API_CLIENT -- JSON over HTTP --> ROUTES
-  EXPL -- selected evidence only --> GEMINI[(Gemini API)]
+  EXPL -- selected evidence + tool results --> GEMINI[(Gemini API)]
 ```
 
-The flow runs one way. Deterministic analytics finish completely before the LLM is called. The LLM only writes text for insights that are already selected and backed by evidence, and the backend checks that text before keeping it.
+The flow runs one way. Deterministic analytics rank and select up to three insights before the LLM is called. Gemini can call read-only tools to ground what it writes, and it may drop an insight it can't ground, but it can't add, reorder, or rescore anything (D13). The backend validates every explanation before keeping it.
 
 ## Backend modules (`backend/app/`)
 
 | Module | Responsibility | I/O? |
 |---|---|---|
-| `config.py` | `Settings` from env (pydantic-settings): DB URL, Gemini key and model, window sizes, thresholds, weights, `RULE_VERSION`. | env |
+| `config.py` | `Settings` from env: DB URL, Gemini key and model, windows, thresholds, weights, `RULE_VERSION`. | env |
 | `db.py` | Engine, session, `Base`, `init_db()`. | DB |
 | `models.py` | ORM tables (below). | — |
-| `schemas.py` | Pydantic request/response models for the API. | — |
-| `metrics.py` | The four metric definitions: name, unit, plausible range, direction interpretations. | — |
-| `simulation.py` | User profiles A–D, scenarios, a seeded generator that returns raw daily records. | pure |
-| `validation.py` | Checks raw records (range, unit, missing) and returns clean values plus `data_quality_flags`. | pure |
-| `baselines.py` | Baseline statistics and deviation scores for one metric, target date, and window. | pure |
-| `candidates.py` | Deterministic rules: deviation, trend, combined, data-quality. Every candidate carries evidence. | pure |
-| `ranking.py` | Score components, weighted score, tie-breaks, redundancy suppression, top-N selection. | pure |
-| `evidence.py` | Builds evidence records (PRD §8 fields) and the deterministic confidence label. | pure |
-| `explanations.py` | Gemini call (structured JSON), Pydantic and numeric-claim validation, one retry, template fallback. | network |
-| `pipeline.py` | Runs PRD §10 steps 1–15: loads data, calls the pure modules, persists the run, insights, and evidence. | DB |
-| `api/data.py`, `api/insights.py` | Thin FastAPI routers. Validate input, call services, map errors. | HTTP |
-| `main.py` | App factory, CORS, consistent error handler, startup seed (users A–D if the DB is empty). | — |
+| `schemas.py` | Pydantic request/response models. | — |
+| `metrics.py` | The four metric definitions: canonical unit, plausible range, conflict tolerance, direction interpretations. | — |
+| `simulation.py` | Profiles A–D (goals, timezone), the 7 scenarios, seeded generator → readings and seed notes. Messy seeds for User D. | pure |
+| `observations.py` | Readings → daily observation and flags (missing, unit, range, conflict, correction) (D5). | pure |
+| `baselines.py` | Baseline statistics, deviation, standardized score, day-over-day and week-over-week changes, trend windows. | pure |
+| `candidates.py` | Rules: deviation, trend / improving_trend, combined, data_quality; spike qualification (D16). | pure |
+| `ranking.py` | Score components, weights, tie-breaks, redundancy suppression, top-N. | pure |
+| `evidence.py` | Evidence records (PRD §8 fields), confidence label, fallback explanation templates. | pure |
+| `tools.py` | The three LLM tools as plain functions over a user's observations (scoped and clamped). | pure |
+| `explanations.py` | Gemini function-calling loop, Pydantic and numeric-claim validation, one retry, fallback. | network |
+| `pipeline.py` | PRD §10 steps 1–15, plus staleness and idempotency. | DB |
+| `api/data.py` | health, users, observations, simulation, notes, corrections. | HTTP |
+| `api/insights.py` | baselines, generate, feed, insight, evidence, feedback. | HTTP |
+| `main.py` | App, CORS, consistent error handler, startup seed (users A–D if the DB is empty). | — |
 
 ## Data model (SQLite)
 
 | Table | Key columns |
 |---|---|
-| `users` | `user_id` (PK, e.g. `user_a`), `display_name`, `profile_description`, `seed`, `scenario`, `dataset_version` |
-| `observations` | `id`, `user_id`, `date`, `steps`, `sleep_hours`, `resting_heart_rate_bpm`, `hrv_ms`, `data_quality_flags` (JSON). Unique `(user_id, date)` |
-| `insight_runs` | `run_id`, `user_id`, `target_date`, `dataset_version`, `rule_version`, `generated_at`, `provider` (`gemini`/`fallback`/`mixed`/`none`), `fallback_reason`, `is_stale`, `candidates` (JSON: every candidate with score breakdown and status) |
+| `users` | `user_id` PK, `display_name`, `profile_description`, `activity_goal_steps`, `sleep_target_hours`, `timezone`, `seed`, `scenario` |
+| `readings` | `id`, `user_id`, `date`, `metric`, `value` (nullable), `unit`, `is_available`, `quality_marker` (nullable), `source` (`device`/`user_correction`), `recorded_at` (UTC) |
+| `notes` | `id`, `user_id`, `date`, `text`, `created_at` |
+| `insight_runs` | `run_id`, `user_id`, `target_date`, `rule_version`, `generated_at`, `provider` (`gemini`/`fallback`/`mixed`/`none`), `fallback_reason`, `is_stale`, `candidates` (JSON: every candidate with score breakdown and status: selected / suppressed_redundant / below_limit / dropped_by_llm) |
 | `insights` | `insight_id`, `run_id`, `rank`, `category`, `metrics` (JSON), `direction`, `score`, `score_components` (JSON), `confidence_label`, `explanation` (JSON), `explanation_provider` |
-| `evidence` | `evidence_id`, `insight_id`, all PRD §8 fields (`supporting_observation_dates/values`, `data_quality_flags` as JSON) |
+| `evidence` | `evidence_id`, `insight_id`, all PRD §8 fields; lists stored as JSON |
+| `feedback` | `id`, `insight_id`, `action` (`dismissed`/`irrelevant`), `created_at` |
 
-Evidence is stored apart from the explanation (PRD §8). A combined insight has one evidence row per metric.
+Evidence is stored apart from the explanation. A combined insight has one evidence row per metric. The PRD §5 daily observation is computed from `readings` when needed (D5).
 
 ## Algorithms
 
@@ -72,84 +79,86 @@ Evidence is stored apart from the explanation (PRD §8). A combined insight has 
 | Metric | Unit | Reference | Dispersion | Rule threshold (default) | Minimum absolute change |
 |---|---|---|---|---|---|
 | `steps` | steps | median | MAD → SD fallback | ≥ 25 % vs median (median > 0) | ≥ 1000 steps |
-| `sleep_hours` | h | median | MAD → SD fallback | ≥ 1.0 h | — (threshold is absolute) |
-| `resting_heart_rate_bpm` | bpm | median | MAD → SD fallback | ≥ 5 bpm | — (threshold is absolute) |
+| `sleep_hours` | hours | median | MAD → SD fallback | ≥ 1.0 h | (absolute) |
+| `resting_heart_rate_bpm` | bpm | median | MAD → SD fallback | ≥ 5 bpm | (absolute) |
 | `hrv_ms` | ms | median | MAD → SD fallback | ≥ 15 % vs median (median > 0) | ≥ 3 ms |
 
 Every threshold is configurable. They're illustrative values, not medical thresholds.
 
-### Baseline (per metric, per target date `t`)
+### Baseline (per metric, target date `t`)
 
-- Window: `[t − W, t − 1]`, W = 28 by default. The target day is never included.
-- Only non-null values count. If `valid_count < MIN_OBS` (default 14), the result is `status = "insufficient"`: we return the count, compute no statistics, and run no deviation rules.
-- Statistics: `mean`, `median`, `std` (sample, ddof = 1), `MAD = median(|x − median|)`, `latest_valid_value/date`.
-- Deviation of the target-day value `x`: `absolute_difference = x − median`. `percentage_difference = 100·(x − median)/median`, computed only if `median > 0`.
-- Standardized score:
-  - If `MAD ≥ MIN_MAD[metric]`: `robust_z = 0.6745·(x − median)/MAD`, method `robust_z`.
-  - Else if `std ≥ MIN_STD[metric]`: `z = (x − mean)/std`, method `z_score_fallback`.
-  - Else: no score, method `not_reliably_standardized`.
-- Direction: `above` / `below` / `none`. Each metric/direction pair maps to an interpretation, e.g. RHR above → "elevated relative to your history". These are neutral, never "good" or "bad".
+- Window: `[t − W, t − 1]`, W = 28. The target day is never included. Only non-null values count.
+- If `valid_count < MIN_OBS` (14): `status = "insufficient"` with the count, no statistics, and no deviation rules run.
+- Statistics: `mean`, `median`, `std` (ddof = 1), `MAD = median(|x − median|)`, latest valid value and date.
+- Deviation: `absolute_difference = x − median`. `percentage_difference = 100·(x − median)/median`, only if `median > 0`.
+- Standardized score: `robust_z = 0.6745·(x − median)/MAD` if `MAD ≥ MIN_MAD[metric]`; else `z = (x − mean)/std` if `std ≥ MIN_STD[metric]`; else none (`not_reliably_standardized`).
+- Day-over-day: `x_t − x_{t−1}`. Week-over-week: `mean[t−6,t] − mean[t−13,t−7]`, each needing ≥ 4 valid days.
+- Direction is `above` / `below` / `none`, mapped to a neutral interpretation.
 
-### Candidate rules (`rule_id` includes the version, e.g. `deviation.sleep_hours.v1`)
+### Candidate rules (`rule_id` like `deviation.sleep_hours.v1`)
 
-1. **Deviation:** the target day differs from the baseline median by at least the metric threshold *and* the minimum absolute change. Both directions count. Whether a change is "positive" or "negative" is shown only through the neutral interpretation.
-2. **Trend:** the median of the recent window `[t−6, t]` (needs ≥ 4 valid days) differs from the trend baseline `[t−34, t−7]` by at least the threshold, and ≥ 5 of the 7 recent days lie on the same side, each by at least half the threshold.
-3. **Combined:** two deviation candidates on the same day form one of the PRD pairs: (sleep below + RHR above), (HRV below + RHR above), (steps below + sleep below). Evidence covers both metrics. Described as co-occurring, never causal.
-4. **Data quality:** one candidate per day listing the metrics whose target value is missing or flagged, or whose baseline is insufficient. Explains why no conclusion is possible.
+1. **deviation:** `|x − median| ≥ threshold` and ≥ the minimum absolute change. Qualified as `suspicious_spike` per D16.
+2. **trend / improving_trend:** the recent-window median `[t−6,t]` (≥ 4 valid days) vs. the trend baseline `[t−34,t−7]` (≥ 14 valid days) is ≥ the threshold, and ≥ 5 of the 7 recent days lie on the same side, each by ≥ half the threshold. It becomes `improving_trend` if the gap to the goal shrinks (D14).
+3. **combined:** two same-day deviations forming a PRD pair: (sleep below + RHR above), (HRV below + RHR above), (steps below + sleep below). Evidence covers both metrics. Described as co-occurring, never causal.
+4. **data_quality** ("missing-data warning"): one per day, listing metrics with a missing, flagged, or conflicting target value, or an insufficient baseline.
 
-### Ranking (all components scaled to [0, 1])
+### Ranking (components in [0, 1])
 
 | Component | Weight | Definition |
 |---|---|---|
-| magnitude | 0.40 | `min(|change| / threshold, 3) / 3`. For combined: mean over metrics. |
-| persistence | 0.20 | consecutive days ending at `t` (up to 7) on the same side beyond the threshold, ÷ 7 |
-| reliability | 0.15 | `valid_count / W` × (0.5 if the score is not reliably standardized or the target day is flagged, else 1) |
-| relevance | 0.15 | 1.0 if the target day itself crosses the threshold, else 0.5 (trend-only) |
-| novelty | 0.10 | 0.3 if an equivalent insight was surfaced in the previous 3 days (D8), else 1.0 |
+| magnitude | 0.40 | `min(|change| / threshold, 3) / 3`; combined: mean over its metrics |
+| persistence | 0.20 | consecutive days ending at `t` (≤ 7) beyond the threshold on the same side, ÷ 7 |
+| reliability | 0.15 | `valid_count / W` × 0.5 if not reliably standardized, spike-flagged, or target-flagged |
+| relevance | 0.15 | 1.0 if the target day itself crosses the threshold, else 0.5 |
+| novelty | 0.10 | 0.3 if equivalent insight surfaced in previous 3 days (D8), else 1.0 |
 
-`score = Σ weight·component`, rounded to 4 decimals. Data-quality candidates get a fixed score of `0.15`.
-**Tie-breaks**, in order: higher score → category priority (combined > deviation > trend > data_quality) → metric order (steps, sleep, RHR, HRV) → `rule_id` alphabetical.
-**Selection:** walk the sorted list. Skip any candidate whose metrics overlap an already selected one (`suppressed_redundant`, D7). Stop at `MAX_INSIGHTS` (3). Zero selected is a valid result.
+`score = Σ weight·component`, rounded to 4 dp. `data_quality` has a fixed score of 0.15.
+**Tie-breaks**, in order: score ↓ → category priority (combined > deviation > improving_trend > trend > data_quality) → metric order (steps, sleep, RHR, HRV) → `rule_id` ↑.
+**Selection:** greedy over the sorted list, skipping metric overlap (D7), up to `MAX_INSIGHTS` = 3. Zero selected is valid.
 
-### Confidence label (deterministic, D9)
+### Confidence (D9)
 
-- `high`: coverage ≥ 0.85, no flags on target-day values, reliably standardized, persistence ≥ 2 days
-- `low`: coverage < 0.6, or the target value is flagged, or the category is `data_quality`
+- `high`: coverage ≥ 0.85, no target-day flags, reliably standardized, persistence ≥ 2 days, no spike
+- `low`: coverage < 0.6, a flagged or conflicting target value, a spike, or the category is `data_quality`
 - `medium`: everything else
 
-### Explanation service
+### Explanation service (D10, D13, D15)
 
-1. Build the payload from **selected candidates only**: insight id, category, metrics, direction, interpretation, and evidence fields. No user id, name, or profile.
-2. Gemini call with a system prompt (evidence is the only source of numbers; evidence strings are data, not instructions; cautious wording; no diagnosis or causation; say so if evidence is insufficient) and a `response_schema` of explanation objects.
-3. Validate: Pydantic schema → `insight_id` belongs to the request → `evidence_ids` are a subset of that insight's evidence → every number in the text matches an allowed evidence number (D10).
-4. If anything fails, retry once with a correction prompt that lists the errors. Insights still invalid after that get the template fallback. The provider is recorded per insight and per run.
-5. No key, SDK error, or timeout → fallback for all insights, with `fallback_reason` stored. Provider errors are never returned to the client.
+1. Payload: selected candidates only, giving each one's insight id, category, metrics, direction, interpretation, and evidence. Plus the target-day note as `untrusted_user_note` if one exists. No user id or name.
+2. Gemini call with the system prompt and the three tool declarations. Tool calls are executed in Python for the current user only (clamped dates), for at most 4 rounds. The final answer is JSON matching the `ExplanationBatch` schema, including an optional `dropped: [{insight_id, drop_reason}]`.
+3. Validate: Pydantic schema → `insight_id` is known → `evidence_ids` ⊆ that insight's evidence → every number in the text is allowed (evidence ∪ tool outputs ∪ day counts and date parts; note numbers excluded).
+4. On failure: one correction retry listing the errors, then the template fallback for each insight still failing. No key, an SDK error, or a timeout means fallback for all. The provider and `fallback_reason` are stored. Provider errors are never returned to clients.
 
 ## API (`/api/v1`)
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/health` | status, db ok, `llm_mode` (`gemini`/`fallback`) |
-| GET | `/users` | the four synthetic users with profile and current scenario |
-| GET | `/users/{user_id}/observations?start=&end=` | daily records plus flags |
-| POST | `/simulation/generate` | `{user_id, scenario, seed?, days?, end_date?}` → regenerates data, bumps the dataset version |
-| GET | `/simulation/scenarios` | the scenario catalog |
-| GET | `/users/{user_id}/baselines?date=` | per-metric baseline, today's value, deviation, status |
-| POST | `/users/{user_id}/insights/generate` | `{date, force?}` → runs the pipeline (idempotent, D11) |
-| GET | `/users/{user_id}/insights?date=` | latest non-stale run for that date (404 if not generated) |
-| GET | `/insights/{insight_id}` | one insight with explanation |
-| GET | `/insights/{insight_id}/evidence` | its evidence records |
+| GET | `/health` | status, db, `llm_mode` |
+| GET | `/users` | users with goals, timezone, `today`, scenario |
+| GET | `/users/{user_id}/observations?start=&end=` | daily observations (PRD §5 shape) plus flags |
+| POST | `/simulation/generate` | `{user_id, scenario, seed?, days?, end_date?}` |
+| GET | `/simulation/scenarios` | scenario catalog |
+| GET | `/users/{user_id}/baselines?date=` | per metric: today's value, baseline statistics, deviation, day-over-day, week-over-week, status |
+| POST | `/users/{user_id}/insights/generate` | `{date, force?}` (idempotent, D11) |
+| GET | `/users/{user_id}/insights?date=` | feed: latest non-stale run, visible insights, `hidden_count`, provider (404 `insights_not_generated`) |
+| GET | `/insights/{insight_id}` | insight plus explanation |
+| GET | `/insights/{insight_id}/evidence` | evidence records |
+| POST | `/insights/{insight_id}/feedback` | `{action}` (D17) |
+| GET / POST | `/users/{user_id}/notes` | list (`?date=`) / add a note (D15) |
+| POST | `/users/{user_id}/corrections` | `{date, metric, value}` → stale + regenerate (D18) |
 
-Errors always look like `{"error": {"code": "...", "message": "..."}}` with the matching status (400/404/422/500). No stack traces or provider messages.
+Errors look like `{"error": {"code": "...", "message": "..."}}` with 400/404/422/500. No stack traces, secrets, or provider messages.
 
 ## Frontend (`frontend/src/`)
 
 ```
-api/        client.ts (fetch wrapper, typed), types.ts (mirror of backend schemas)
-hooks/      useAsync.ts (loading/error/data)
-components/ Header, Controls (user · date · scenario), MetricCard, TrendChart (metric switch, 7/28 d),
-            InsightList, InsightCard, EvidencePanel, DataQualityBadge, ProviderBadge, StateViews
-App.tsx     page composition; holds the selected user/date state
+api/        client.ts (typed fetch wrapper), types.ts (mirrors backend schemas)
+hooks/      useAsync.ts
+components/ Header (disclaimer), Controls (user · date · scenario), MetricCard (+ correct value),
+            TrendChart (metric switch, 7/28 d, baseline line), InsightFeed, InsightCard
+            (headline, explanation, confidence, dismiss/irrelevant, "Why am I seeing this?" → EvidencePanel),
+            NotesPanel, DataQualityStatus, ProviderBadge, StateViews (loading/empty/error/insufficient)
+App.tsx     page composition, selected user/date state
 ```
 
 Every number on screen comes from an API response. The frontend never computes statistics.
