@@ -54,7 +54,7 @@ export function Sidebar({ view, onNavigate, health }: Props) {
                 aria-current={current ? "page" : undefined}
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  current ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  current ? "bg-primary/10 text-primary-strong" : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >
                 <Icon className="size-4 shrink-0" aria-hidden />

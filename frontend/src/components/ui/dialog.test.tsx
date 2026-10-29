@@ -16,4 +16,17 @@ describe("Dialog", () => {
     expect(screen.getByRole("dialog", { name: "Title" })).toBeInTheDocument();
     expect(error.mock.calls.flat().join(" ")).not.toMatch(/cannot be given refs/);
   });
+
+  it("scrolls inside the viewport on short screens", () => {
+    render(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Title</DialogTitle>
+          <DialogDescription>Body</DialogDescription>
+        </DialogContent>
+      </Dialog>,
+    );
+    expect(screen.getByRole("dialog").className).toMatch(/max-h-\[calc\(100dvh-2rem\)\]/);
+    expect(screen.getByRole("dialog").className).toContain("overflow-y-auto");
+  });
 });

@@ -94,8 +94,12 @@ function EvidenceRecordView({ record: r }: { record: EvidenceRecord }) {
         <SupportingBars record={r} />
         <ul className="flex flex-wrap gap-1">
           {r.supporting_observation_dates.map((d, i) => (
-            <li key={d} className="rounded-md border border-border px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+            <li
+              key={d}
+              className={`rounded-md border px-2 py-0.5 text-xs tabular-nums ${d === r.target_date ? "border-primary/40 font-medium text-foreground" : "border-border text-muted-foreground"}`}
+            >
               {d.slice(5)}: {formatValue(r.metric, r.supporting_observation_values[i])}
+              {d === r.target_date && " (selected day)"}
             </li>
           ))}
         </ul>

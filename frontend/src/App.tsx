@@ -127,8 +127,11 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
     onDataRegenerated();
   }
 
+  // The date the shown values belong to (from the response), not a newly picked date that is still loading
+  const valuesDate = baselines.data?.date ?? date;
+
   async function correct(metric: Metric, value: number) {
-    await api.correct(user.user_id, date, metric, value);
+    await api.correct(user.user_id, valuesDate, metric, value);
     setVersion((v) => v + 1);
   }
 
@@ -198,6 +201,7 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
                   baseline={b}
                   onCorrect={() => setCorrecting(b)}
                   highlighted={insightMetrics.includes(b.metric)}
+                  stale={baselines.loading}
                   history={observations.data?.observations}
                 />
               ))}
@@ -208,7 +212,7 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
 
         <CorrectionDialog
           metric={correcting}
-          date={date}
+          date={valuesDate}
           onOpenChange={(open) => !open && setCorrecting(null)}
           onSubmit={(value) => correct(correcting!.metric, value)}
         />

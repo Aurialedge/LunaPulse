@@ -55,7 +55,7 @@ export function InsightCard({ insight, onFeedback, onOpenEvidence, position, tot
   }
 
   return (
-    <Card aria-labelledby={titleId} data-testid="insight-card" className="lp-enter relative overflow-hidden p-5 pl-6">
+    <Card role="article" aria-labelledby={titleId} data-testid="insight-card" className="lp-enter relative overflow-hidden p-5 pl-6">
       <span className="absolute inset-y-0 left-0 w-1" style={{ background: accent }} aria-hidden />
 
       <div className="flex items-start justify-between gap-3">

@@ -14,18 +14,21 @@
   --color-popover-foreground: #172033;
   --color-primary: #635bff;
   --color-primary-foreground: #ffffff;
+  --color-primary-strong: #4b42e0; /* accent text on accent tints: 5.9:1 */
   --color-secondary: #f1f3f7;
   --color-secondary-foreground: #172033;
   --color-muted: #f1f3f7;
   --color-muted-foreground: #687386;
+  --color-muted-strong: #5b6577; /* secondary text on grey surfaces (tabs, table headers): 5.3:1 */
   --color-accent: #f1f3f7;
   --color-accent-foreground: #172033;
   --color-border: #e6e9ef;
-  --color-input: #e6e9ef;
+  --color-input: #858fa2; /* form-control boundary: 3.3:1 on white (WCAG 1.4.11) */
   --color-ring: #635bff;
 
   /* Status: always paired with an icon or text. Warning text uses the darker shade for contrast. */
   --color-positive: #16845b;
+  --color-positive-strong: #0f6b49; /* positive text on positive tints: 5.8:1 */
   --color-warning: #b7791f;
   --color-warning-foreground: #8a5a12;
   --color-negative: #c24141;
@@ -79,10 +82,11 @@ body {
     opacity: 0;
   }
 }
+/* Only scale: Tailwind 4 positions with the separate `translate` property, which must not be doubled here. */
 @keyframes lp-pop-in {
   from {
     opacity: 0;
-    transform: translate(var(--tw-translate-x, 0), var(--tw-translate-y, 0)) scale(0.97);
+    transform: scale(0.97);
   }
 }
 @keyframes lp-slide-in-right {

@@ -155,7 +155,7 @@ The UI follows `design.md` §3:
 - status colours positive `#16845B`, warning `#B7791F` (text uses `#8A5A12` for contrast), negative `#C24141`;
 - thin borders, subtle shadows, no glows, glass or decorative gradients.
 
-Status is always shown with an icon or text. Change arrows are neutral grey, because a higher or lower value isn't automatically good or bad. Motion is limited to short fades and slides and is off under `prefers-reduced-motion`.
+The palette's own colours are unchanged, but text on tinted or grey surfaces uses darker "strong" tokens (`#4B42E0` accent, `#0F6B49` positive, `#5B6577` secondary; all ≥ 5.3:1). Form controls use a `#858FA2` border, which is 3.3:1 against white (WCAG 1.4.11). `src/test/contrast.test.ts` checks every pair. Status is always shown with an icon or text. Change arrows are neutral grey, because a higher or lower value isn't automatically good or bad. Motion is limited to short fades and slides and is off under `prefers-reduced-motion`.
 
 ## D37. Layout mapping *(user: "do what's best")*
 - **Sidebar:** Overview / Insights / Trends / Edit data (no non-functional items). On phones and tablets (< lg) it becomes a Sheet drawer.

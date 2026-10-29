@@ -66,10 +66,11 @@ interface Props {
   onCorrect: () => void; // opens the correction dialog
   history?: Observation[]; // the 28-day observations response, for the sparkline
   highlighted?: boolean; // a current insight is about this metric (D33)
+  stale?: boolean; // new values are loading: don't offer a correction against the old ones
 }
 
 /** Today's value vs. the personal baseline. Every number comes from the backend. */
-export function MetricCard({ baseline: b, onCorrect, history, highlighted = false }: Props) {
+export function MetricCard({ baseline: b, onCorrect, history, highlighted = false, stale = false }: Props) {
   const id = `metric-${b.metric}`;
   const { accent, label } = METRIC_INFO[b.metric];
   const Icon = ICONS[b.metric];
@@ -77,10 +78,16 @@ export function MetricCard({ baseline: b, onCorrect, history, highlighted = fals
 
   return (
     <Card
+      role="article"
       aria-labelledby={id}
+      aria-busy={stale}
       data-testid={id}
       data-highlighted={highlighted}
-      className={cn("lp-enter flex flex-col gap-3 p-5 transition-shadow", highlighted && "border-primary/40 ring-1 ring-primary/20")}
+      className={cn(
+        "lp-enter flex flex-col gap-3 p-5 transition",
+        highlighted && "border-primary/40 ring-1 ring-primary/20",
+        stale && "opacity-60",
+      )}
     >
       <div className="flex items-center justify-between gap-2">
         <h3 id={id} className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -94,6 +101,7 @@ export function MetricCard({ baseline: b, onCorrect, history, highlighted = fals
           size="icon"
           className="size-8 text-muted-foreground"
           onClick={onCorrect}
+          disabled={stale}
           aria-haspopup="dialog"
           aria-label={`Correct ${b.label} value`}
         >

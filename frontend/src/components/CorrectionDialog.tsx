@@ -51,7 +51,7 @@ function CorrectionForm({ metric, date, onOpenChange, onSubmit }: Props & { metr
   }
 
   return (
-    <DialogContent>
+    <DialogContent locked={saving}>
       <form onSubmit={submit} className="grid gap-4">
         <DialogHeader>
           <DialogTitle>Correct {metric.label}</DialogTitle>

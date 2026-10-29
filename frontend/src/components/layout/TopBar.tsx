@@ -106,7 +106,7 @@ function DemoDataDialog({ user, scenarios, onApply }: { user: User; scenarios: S
           Demo data
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent locked={applying}>
         <DialogHeader>
           <DialogTitle>Demo data</DialogTitle>
           <DialogDescription>

@@ -64,6 +64,23 @@ describe("App shell", () => {
     await waitFor(() => expect(api.baselines).toHaveBeenCalledWith("user_b", "2026-06-30"));
   });
 
+  it("while a new date loads, values are locked and corrections use the date they belong to", async () => {
+    render(<App />);
+    await screen.findByRole("region", { name: "Metrics for the selected day" });
+    vi.spyOn(api, "baselines").mockReturnValue(new Promise(() => {})); // the new date never arrives
+    fireEvent.change(screen.getByLabelText("Date", { selector: "input" }), { target: { value: "2026-06-20" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Correct Sleep value" })).toBeDisabled());
+    expect(screen.getByTestId("metric-sleep_hours")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("the correction dialog shows the date of the values it shows", async () => {
+    render(<App />);
+    await screen.findByRole("region", { name: "Metrics for the selected day" });
+    await userEvent.click(screen.getByRole("button", { name: "Correct Sleep value" }));
+    const dialog = await screen.findByRole("dialog", { name: "Correct Sleep" });
+    expect(within(dialog).getByText("Tue, 30 Jun 2026")).toBeInTheDocument(); // baselines.date from the response
+  });
+
   it("sidebar switches between overview and the data editor", async () => {
     render(<App />);
     await screen.findByRole("region", { name: "Metrics for the selected day" });

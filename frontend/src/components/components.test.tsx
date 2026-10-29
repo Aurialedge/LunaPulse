@@ -76,6 +76,17 @@ describe("MetricCard", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
+  it("is an article named by its metric", () => {
+    render(<MetricCard baseline={sleep} onCorrect={vi.fn()} />);
+    expect(screen.getByRole("article", { name: "Sleep" })).toBeInTheDocument();
+  });
+
+  it("the correct action is disabled while values are reloading", () => {
+    render(<MetricCard baseline={sleep} onCorrect={vi.fn()} stale />);
+    expect(screen.getByRole("button", { name: "Correct Sleep value" })).toBeDisabled();
+    expect(screen.getByTestId("metric-sleep_hours")).toHaveAttribute("aria-busy", "true");
+  });
+
   it("highlights tiles named by a current insight", () => {
     const { rerender } = render(<MetricCard baseline={sleep} onCorrect={vi.fn()} />);
     expect(screen.getByTestId("metric-sleep_hours")).toHaveAttribute("data-highlighted", "false");
@@ -120,6 +131,19 @@ describe("CorrectionDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a number.");
+  });
+
+  it("cannot be dismissed while saving, so a backend error is never lost", async () => {
+    let fail: (e: Error) => void = () => {};
+    const onSubmit = vi.fn().mockReturnValue(new Promise<void>((_, reject) => { fail = reject; }));
+    const onOpenChange = vi.fn();
+    render(<CorrectionDialog metric={sleep} date="2026-06-30" onOpenChange={onOpenChange} onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByLabelText("New value (hours)"), "30");
+    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
+    await userEvent.keyboard("{Escape}");
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    fail(new ApiError(422, "invalid_value", "Sleep must be between 0 and 24 hours."));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sleep must be between 0 and 24 hours.");
   });
 
   it("successful correction closes and confirms after the backend answers", async () => {
@@ -203,6 +227,11 @@ describe("TrendChart", () => {
     expect(container.querySelector(".recharts-responsive-container")).not.toBeNull();
   });
 
+  it("is a region named by its heading", () => {
+    render(<TrendChart observations={observations.observations} baselines={baselines.metrics} />);
+    expect(screen.getByRole("region", { name: "Steps, last 28 days" })).toBeInTheDocument();
+  });
+
   it("chart skeleton while loading", () => {
     render(<TrendChartSkeleton />);
     expect(screen.getByTestId("chart-skeleton")).toBeInTheDocument();
@@ -243,6 +272,13 @@ describe("InsightCard and evidence", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("the selected day is marked in words, not only by colour", async () => {
+    vi.spyOn(api, "evidence").mockResolvedValue(evidence);
+    render(<EvidenceDrawer insight={insight} onClose={vi.fn()} />);
+    expect(await screen.findByText("06-30: 5.17 h (selected day)")).toBeInTheDocument();
+    expect(screen.getByText("06-29: 4.31 h")).toBeInTheDocument();
+  });
+
   it("target date is highlighted in the supporting observations", async () => {
     vi.spyOn(api, "evidence").mockResolvedValue(evidence);
     render(<EvidenceDrawer insight={insight} onClose={vi.fn()} />);
@@ -266,6 +302,11 @@ describe("InsightCard and evidence", () => {
     vi.spyOn(api, "evidence").mockRejectedValue(new ApiError(500, "internal_error", "Something went wrong on the server."));
     render(<EvidenceDrawer insight={insight} onClose={vi.fn()} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on the server.");
+  });
+
+  it("an insight card is an article named by its headline", () => {
+    render(<InsightCard insight={insight} onFeedback={vi.fn()} onOpenEvidence={vi.fn()} />);
+    expect(screen.getByRole("article", { name: "Sleep: shorter sleep duration" })).toBeInTheDocument();
   });
 
   it("cards show the evidence summary from the evidence endpoint", async () => {
@@ -379,6 +420,21 @@ describe("InsightFeed", () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
+  it("the feed stays on screen while it reloads after feedback", async () => {
+    let finishReload: (f: typeof feed) => void = () => {};
+    vi.spyOn(api, "feed")
+      .mockResolvedValueOnce(feed)
+      .mockReturnValueOnce(new Promise((resolve) => { finishReload = resolve; }));
+    vi.spyOn(api, "feedback").mockResolvedValue({ id: 1, insight_id: "ins_1", action: "irrelevant", created_at: "" });
+    render(<InsightFeed userId="user_a" date="2026-06-30" version={0} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Insight actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Not relevant" }));
+    expect(screen.getAllByTestId("insight-card")).toHaveLength(1);
+    expect(screen.queryByTestId("insight-skeleton")).not.toBeInTheDocument();
+    finishReload({ ...feed, insights: [], hidden_count: 1 });
+    expect(await screen.findByText("All insights for this day are hidden")).toBeInTheDocument();
+  });
+
   it("dismissing hides the insight and allows showing hidden ones", async () => {
     const hiddenFeed = { ...feed, insights: [], hidden_count: 1 };
     const load = vi.spyOn(api, "feed")
@@ -390,6 +446,8 @@ describe("InsightFeed", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Insight actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Dismiss" }));
     expect(send).toHaveBeenCalledWith("ins_1", "dismissed");
+    // keyboard focus lands on the feed heading instead of falling back to the page
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Top insights for 2026-06-30" })).toHaveFocus());
     expect(await screen.findByText("All insights for this day are hidden")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Show 1 hidden insight(s)" }));
     expect(await screen.findByText("Marked dismissed")).toBeInTheDocument();

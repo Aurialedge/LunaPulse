@@ -54,7 +54,7 @@ export function TrendChart({ observations, baselines, active = true }: Props) {
   const { label, accent, unit } = METRIC_INFO[metric];
 
   return (
-    <Card aria-labelledby="trend-title" className="flex flex-col gap-4 p-5">
+    <Card role="region" aria-labelledby="trend-title" className="flex flex-col gap-4 p-5">
       <Tabs value={metric} onValueChange={(v) => setMetric(v as Metric)}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-1.5">
@@ -89,7 +89,7 @@ export function TrendChart({ observations, baselines, active = true }: Props) {
                   aria-label={`${r} days`}
                   onClick={() => setRange(r)}
                   className={`h-full rounded-md px-3 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                    r === range ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    r === range ? "bg-card text-foreground shadow-xs" : "text-muted-strong hover:text-foreground"
                   }`}
                 >
                   {r}d
@@ -172,7 +172,7 @@ export function TrendChart({ observations, baselines, active = true }: Props) {
         <div className="max-h-72 overflow-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{label} by date</caption>
-            <thead className="sticky top-0 bg-secondary text-xs text-muted-foreground">
+            <thead className="sticky top-0 bg-secondary text-xs text-muted-strong">
               <tr><th className="px-3 py-2 font-medium">Date</th><th className="px-3 py-2 font-medium">{label}</th><th className="px-3 py-2 font-medium">Flags</th></tr>
             </thead>
             <tbody>

@@ -21,20 +21,29 @@ const DialogOverlay = React.forwardRef<HTMLDivElement, React.ComponentProps<type
   },
 );
 
-function DialogContent({ className, children, ...props }: React.ComponentProps<typeof DialogPrimitive.Content>) {
+function DialogContent({
+  className,
+  children,
+  locked = false,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Content> & { locked?: boolean }) {
+  // locked: an operation is in flight, so Escape, outside clicks and the X don't close the dialog (errors stay visible)
+  const keepOpen = (event: Event) => locked && event.preventDefault();
   return (
     <DialogPrimitive.Portal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "lp-pop-in fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border border-border bg-card p-6 shadow-lg",
+          "lp-pop-in fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-lg",
           className,
         )}
+        onEscapeKeyDown={keepOpen}
+        onInteractOutside={keepOpen}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute top-4 right-4 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+        <DialogPrimitive.Close disabled={locked} className="absolute top-4 right-4 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
           <X className="size-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

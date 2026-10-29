@@ -1,5 +1,5 @@
 import { RefreshCw, Sparkles, TimerReset } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { FeedbackAction, Feed, Insight, Metric } from "../api/types";
 import { formatDateTime } from "../format";
@@ -30,6 +30,9 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<ApiError | null>(null);
   const notGenerated = error?.code === "insights_not_generated";
+  // Keep showing the current feed while it reloads (e.g. after feedback), but never another day's or user's feed
+  const current = feed && feed.target_date === date && feed.user_id === userId ? feed : null;
+  const headingRef = useRef<HTMLHeadingElement>(null);
   // The insight whose evidence drawer is open. Closed whenever the date or the data changes, so evidence from
   // another day or an outdated run is never shown (the workspace remounts on a user change).
   const [evidenceFor, setEvidenceFor] = useState<Insight | null>(null);
@@ -60,26 +63,27 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
 
   async function sendFeedback(insightId: string, action: FeedbackAction) {
     await api.feedback(insightId, action);
+    headingRef.current?.focus(); // the card (and its menu trigger) is about to disappear
     reload();
   }
 
-  const buttonLabel = outdated ? "Recalculate insights" : feed ? "Regenerate insights" : "Generate insights";
-  const ButtonIcon = outdated ? TimerReset : feed ? RefreshCw : Sparkles;
+  const buttonLabel = outdated ? "Recalculate insights" : current ? "Regenerate insights" : "Generate insights";
+  const ButtonIcon = outdated ? TimerReset : current ? RefreshCw : Sparkles;
   const visibleCount = feed?.insights.length ?? 0;
 
   return (
     <section aria-labelledby="feed-title" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1.5">
-          <h2 id="feed-title" className="text-xl font-semibold tracking-tight">Top insights for {date}</h2>
-          {feed && (
+          <h2 id="feed-title" ref={headingRef} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">Top insights for {date}</h2>
+          {current && (
             <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <ProviderBadge provider={feed.provider} reason={feed.fallback_reason} />
-              Generated {formatDateTime(feed.generated_at)} · rules {feed.rule_version} · ranked by the backend, at most 3
+              <ProviderBadge provider={current.provider} reason={current.fallback_reason} />
+              Generated {formatDateTime(current.generated_at)} · rules {current.rule_version} · ranked by the backend, at most 3
             </p>
           )}
         </div>
-        <Button disabled={generating || loading} onClick={() => generate(Boolean(feed))}>
+        <Button disabled={generating || loading} onClick={() => generate(Boolean(current))}>
           <ButtonIcon aria-hidden />
           {generating ? "Generating…" : buttonLabel}
         </Button>
@@ -88,7 +92,7 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
       {generating && <LoadingState label="Calculating evidence and writing explanations (Gemini can take up to 30 seconds)…" />}
       {generateError && <ErrorState error={generateError} />}
 
-      {!generating && loading && (
+      {!generating && loading && !current && (
         <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading insights">
           <InsightCardSkeleton />
           <InsightCardSkeleton />
@@ -113,16 +117,16 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
       )}
       {!generating && !loading && error && !notGenerated && !outdated && <ErrorState error={error} onRetry={reload} />}
 
-      {!generating && !loading && feed && (
+      {!generating && current && (
         <>
           {visibleCount === 0 && (
-            <EmptyState title={feed.hidden_count ? "All insights for this day are hidden" : "No notable insights for this date"}>
-              {feed.hidden_count
+            <EmptyState title={current.hidden_count ? "All insights for this day are hidden" : "No notable insights for this date"}>
+              {current.hidden_count
                 ? "You dismissed or flagged every insight."
                 : "Your available data did not produce a sufficiently supported insight for this period."}
             </EmptyState>
           )}
-          {feed.insights.map((insight, index) => (
+          {current.insights.map((insight, index) => (
             <InsightCard
               key={insight.insight_id}
               insight={insight}
@@ -132,12 +136,12 @@ export function InsightFeed({ userId, date, version, onInsightMetrics, onGenerat
               onOpenEvidence={setEvidenceFor}
             />
           ))}
-          {(feed.hidden_count > 0 || showHidden) && (
+          {(current.hidden_count > 0 || showHidden) && (
             <Button variant="outline" size="sm" className="self-start" onClick={() => setShowHidden((v) => !v)}>
-              {showHidden ? "Hide dismissed insights" : `Show ${feed.hidden_count} hidden insight(s)`}
+              {showHidden ? "Hide dismissed insights" : `Show ${current.hidden_count} hidden insight(s)`}
             </Button>
           )}
-          <CandidateSummary feed={feed} />
+          <CandidateSummary feed={current} />
         </>
       )}
       <EvidenceDrawer insight={evidenceFor} onClose={() => setEvidenceFor(null)} />

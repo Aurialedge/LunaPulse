@@ -119,7 +119,7 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
       <div ref={tableRef} className="max-h-[60vh] overflow-auto rounded-lg border border-border">
         <table className="w-full min-w-[520px] text-left text-sm">
           <caption className="sr-only">Daily values, newest first</caption>
-          <thead className="sticky top-0 z-10 bg-secondary text-xs text-muted-foreground">
+          <thead className="sticky top-0 z-10 bg-secondary text-xs text-muted-strong">
             <tr>
               <th className="whitespace-nowrap px-3 py-2 font-medium">Date</th>
               {METRICS.map((m) => (

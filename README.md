@@ -70,7 +70,7 @@ Every threshold and weight is a named constant in [`backend/app/config.py`](back
 
 ```bash
 cd backend && pytest                 # 191 tests: unit + API integration, Gemini always mocked
-cd frontend && npm test              # 81 Vitest + React Testing Library tests
+cd frontend && npm test              # 100 Vitest + React Testing Library tests
 cd frontend && npx playwright install chromium && npm run test:e2e
                                      # 10 Playwright tests: real backend (fallback mode, temp DB) + real UI
 cd frontend && npm run build && npm run lint
