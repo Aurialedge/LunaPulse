@@ -5,8 +5,8 @@ Choices the requirements (`PRD.md` Part A = PRD, Part B = Task 3) left open, and
 ## D1. Scenarios are injected into one of the four base users *(user)*
 `POST /simulation/generate {user_id, scenario, seed?, days?, end_date?}` regenerates that user's full history from their base profile and the seed, then applies the scenario to the most recent days. Only users A–D exist. All of the user's insight runs are marked stale. — Keeps the user list small and the demo natural: pick a user, inject an anomaly, generate insights.
 
-## D2. Gemini `gemini-2.5-flash` via the official `google-genai` SDK *(user)*
-Set with the `GEMINI_MODEL` env var. Uses structured JSON output validated by Pydantic. Without a key, the app runs in fallback mode.
+## D2. Gemini `gemini-3.8-flash` via the official `google-genai` SDK *(user)*
+Set with the `GEMINI_MODEL` env var. Originally `gemini-2.5-flash`; changed on 2026-10-29 because Google no longer offers that model to new users (404 for this key). The user delegated the choice; `gemini-3.8-flash` is the replacement Google's error names. Uses structured JSON output validated by Pydantic. Without a key, the app runs in fallback mode.
 
 ## D3. No Docker *(user)*
 Dropped to fit the Part B scope into the time budget. The PRD only asks for Docker "where practical". Local commands are documented in the README.

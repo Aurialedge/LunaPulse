@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     database_url: str = f"sqlite:///{(BACKEND_DIR / 'pulselens.db').as_posix()}"
     gemini_api_key: SecretStr = SecretStr("")
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.8-flash"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     @property

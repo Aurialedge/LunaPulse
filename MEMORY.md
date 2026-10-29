@@ -36,4 +36,4 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - Windows needs the `tzdata` package for `zoneinfo` (in requirements.txt).
 - Corrections endpoint (D18) and run staleness are Phase 3; `regenerate_user` in `app/api/data.py` is where Phase 3 must also mark the user's runs stale (D1).
 - Local DB file `backend/pulselens.db` is gitignored; delete it to reseed.
-
+- Gemini: key in `backend/.env` verified on 2026-10-29 (Google accepts it). Default model is `gemini-3.8-flash`; it sometimes returns 503 "high demand", which Phase 3 must treat as fallback (never surface the provider error).
