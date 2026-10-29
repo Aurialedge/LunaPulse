@@ -288,3 +288,27 @@ def test_provider_error_never_reaches_the_client(client):
     assert response.status_code == 200
     assert response.json()["fallback_reason"] == "provider_error"
     assert "AIzaSECRET" not in response.text and "UNAVAILABLE" not in response.text
+
+
+# --- goal progress (dark UI rings; computed in the backend) ---
+
+
+def test_baselines_include_goal_progress_for_steps_and_sleep(client):
+    generate_data(client, user_id="user_b", scenario="reduced_sleep")
+    metrics = {m["metric"]: m for m in client.get("/api/v1/users/user_b/baselines").json()["metrics"]}
+    steps = metrics["steps"]
+    assert steps["goal_value"] == 9000
+    assert steps["goal_progress_percent"] == min(100.0, round(100 * steps["observed_value"] / 9000, 1))
+    assert metrics["sleep_hours"]["goal_value"] == 8.0
+    assert metrics["sleep_hours"]["goal_progress_percent"] == round(100 * metrics["sleep_hours"]["observed_value"] / 8.0, 1)
+    for metric in ("resting_heart_rate_bpm", "hrv_ms"):
+        assert metrics[metric]["goal_value"] is None and metrics[metric]["goal_progress_percent"] is None
+
+
+def test_goal_progress_is_capped_and_null_without_a_value(client):
+    generate_data(client, user_id="user_a", scenario="gradual_trend")
+    steps = client.get("/api/v1/users/user_a/baselines").json()["metrics"][0]
+    assert steps["observed_value"] > 10000 and steps["goal_progress_percent"] == 100.0
+    generate_data(client, user_id="user_a", scenario="missing_data")
+    sleep = client.get("/api/v1/users/user_a/baselines").json()["metrics"][1]
+    assert sleep["observed_value"] is None and sleep["goal_progress_percent"] is None and sleep["goal_value"] == 7.5

@@ -82,6 +82,9 @@ CONFIDENCE_HIGH_MIN_PERSISTENCE = 2
 # LLM tools (D13)
 TOOL_MAX_RANGE_DAYS = 90
 
+# Goal rings in the UI: progress towards the user's own goal, capped (D31)
+GOAL_PROGRESS_CAP = 100.0
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")

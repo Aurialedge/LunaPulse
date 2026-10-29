@@ -10,6 +10,7 @@ from app.api.data import get_user_or_404
 from app.api.errors import ApiError
 from app.baselines import compare_to_baseline
 from app.db import get_db
+from app.config import GOAL_PROGRESS_CAP
 from app.metrics import METRIC_ORDER, METRICS
 from app.models import Evidence, Feedback, Insight, InsightRun, Reading, User
 from app.observations import ReadingData, is_valid_reading
@@ -43,6 +44,14 @@ def resolve_date(user: User, requested: date | None) -> date:
             422, "date_out_of_range", f"date must be between {user.data_start} and {user.data_end} for this user."
         )
     return target
+
+
+def goal_progress(metric: str, value: float | None, user: User) -> tuple[float | None, float | None]:
+    """(goal, progress %) for the UI's goal rings. Only steps and sleep have a goal."""
+    goal = {"steps": user.activity_goal_steps, "sleep_hours": user.sleep_target_hours}.get(metric)
+    if goal is None or value is None or goal <= 0:
+        return goal, None
+    return goal, min(GOAL_PROGRESS_CAP, round(100 * value / goal, 1))
 
 
 def latest_feedback(session: Session, insight_ids: list[str]) -> dict[str, str]:
@@ -120,6 +129,7 @@ def get_baselines(
     for metric in METRIC_ORDER:
         c = compare_to_baseline(observations, metric, target)
         b = c.baseline
+        goal, progress = goal_progress(metric, c.observed_value, user)
         metrics.append(MetricBaselineOut(
             metric=metric, label=METRICS[metric].label, unit=c.unit, observed_value=c.observed_value,
             target_flags=c.target_flags, status=b.status, valid_observation_count=b.valid_count,
@@ -128,6 +138,7 @@ def get_baselines(
             absolute_difference=c.absolute_difference, percentage_difference=c.percentage_difference,
             standardized_score=c.standardized_score, score_method=c.score_method, direction=c.direction,
             interpretation=c.interpretation, day_over_day=c.day_over_day, week_over_week=c.week_over_week,
+            goal_value=goal, goal_progress_percent=progress,
         ))
     return BaselinesOut(user_id=user_id, date=target, metrics=metrics)
 

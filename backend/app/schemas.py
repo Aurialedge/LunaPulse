@@ -141,6 +141,8 @@ class MetricBaselineOut(BaseModel):
     interpretation: str
     day_over_day: float | None
     week_over_week: float | None
+    goal_value: float | None  # steps: activity goal, sleep: sleep target, RHR/HRV: none
+    goal_progress_percent: float | None  # observed / goal, capped at 100 (computed here, never in the UI)
 
 
 class BaselinesOut(BaseModel):
