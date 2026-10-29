@@ -23,6 +23,7 @@ import { EmptyState } from "./StateViews";
 interface Props {
   observations: Observation[]; // the 28 days ending at the selected date
   baselines: MetricBaseline[];
+  active?: boolean; // false while the overview is hidden: a 0x0 container can't be measured, so nothing is drawn
 }
 
 interface Point {
@@ -37,7 +38,7 @@ const BASELINE_HELP =
   "Your personal baseline is calculated from your historical wearable data. Comparisons depend on the amount and quality of available data.";
 
 /** Historical values for one metric against the personal baseline (design.md §7). Values come from the API. */
-export function TrendChart({ observations, baselines }: Props) {
+export function TrendChart({ observations, baselines, active = true }: Props) {
   const [metric, setMetric] = useState<Metric>("steps");
   const [range, setRange] = useState<(typeof RANGES)[number]>(28);
   const [showTable, setShowTable] = useState(false);
@@ -103,6 +104,8 @@ export function TrendChart({ observations, baselines }: Props) {
             {m === metric &&
               (points.length === 0 ? (
                 <EmptyState title="No observations in this range" />
+              ) : !active ? (
+                <div className="h-72 w-full" />
               ) : (
                 <div className="h-72 w-full" aria-hidden={showTable}>
                   <ResponsiveContainer width="100%" height="100%">

@@ -7,15 +7,19 @@ const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogClose = DialogPrimitive.Close;
 
-function DialogOverlay({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
-  return (
-    <DialogPrimitive.Overlay
-      data-slot="dialog-overlay"
-      className={cn("lp-fade-in fixed inset-0 z-50 bg-foreground/30", className)}
-      {...props}
-    />
-  );
-}
+// forwardRef: Radix passes the overlay a ref (React 18 drops refs on plain function components).
+const DialogOverlay = React.forwardRef<HTMLDivElement, React.ComponentProps<typeof DialogPrimitive.Overlay>>(
+  function DialogOverlay({ className, ...props }, ref) {
+    return (
+      <DialogPrimitive.Overlay
+        ref={ref}
+        data-slot="dialog-overlay"
+        className={cn("lp-fade-in fixed inset-0 z-50 bg-foreground/30", className)}
+        {...props}
+      />
+    );
+  },
+);
 
 function DialogContent({ className, children, ...props }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   return (

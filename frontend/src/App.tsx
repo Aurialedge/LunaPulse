@@ -154,7 +154,7 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
       }
     >
       {/* Both views stay mounted (only hidden), so a running recalculation and unsaved edits survive switching. */}
-      <section aria-label="Edit data" className="card" hidden={view !== "edit"}>
+      <section aria-label="Edit data" className="rounded-xl border border-border bg-card p-5 shadow-xs" hidden={view !== "edit"}>
         {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
         {observations.loading && !observations.data && <LoadingState label="Loading data…" />}
         {observations.data && (
@@ -217,7 +217,7 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
           {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}
           {(observations.loading || baselines.loading) && !(observations.data && baselines.data) && <TrendChartSkeleton />}
           {observations.data && baselines.data && (
-            <TrendChart observations={observations.data.observations} baselines={baselines.data.metrics} />
+            <TrendChart observations={observations.data.observations} baselines={baselines.data.metrics} active={view === "overview"} />
           )}
         </div>
 

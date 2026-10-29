@@ -193,6 +193,16 @@ describe("TrendChart", () => {
     );
   });
 
+  it("does not draw the chart while its view is hidden, but keeps its selection", async () => {
+    const { container, rerender } = render(<TrendChart observations={observations.observations} baselines={baselines.metrics} />);
+    await userEvent.click(screen.getByRole("tab", { name: "HRV" }));
+    rerender(<TrendChart observations={observations.observations} baselines={baselines.metrics} active={false} />);
+    expect(container.querySelector(".recharts-responsive-container")).toBeNull();
+    rerender(<TrendChart observations={observations.observations} baselines={baselines.metrics} active />);
+    expect(screen.getByRole("tab", { name: "HRV" })).toHaveAttribute("aria-selected", "true");
+    expect(container.querySelector(".recharts-responsive-container")).not.toBeNull();
+  });
+
   it("chart skeleton while loading", () => {
     render(<TrendChartSkeleton />);
     expect(screen.getByTestId("chart-skeleton")).toBeInTheDocument();

@@ -1,6 +1,7 @@
 import { RotateCcw, Save, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { api } from "../api/client";
+import { Button } from "@/components/ui/button";
 import { METRICS, type Metric, type Observation } from "../api/types";
 import { describeFlag, formatValue, METRIC_INFO } from "../format";
 
@@ -108,21 +109,21 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <h2 className="text-lg font-semibold">Edit data</h2>
-        <p className="text-sm text-ink-soft">
+        <h2 className="text-xl font-semibold tracking-tight">Edit data</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Click any value to change it. Changes are checked against plausible ranges and saved together; the
           affected insights then need recalculating. A value can be changed or filled in, not cleared.
         </p>
       </div>
 
-      <div ref={tableRef} className="max-h-[60vh] overflow-auto rounded-xl border border-line">
+      <div ref={tableRef} className="max-h-[60vh] overflow-auto rounded-lg border border-border">
         <table className="w-full min-w-[520px] text-left text-sm">
           <caption className="sr-only">Daily values, newest first</caption>
-          <thead className="sticky top-0 z-10 bg-surface-raised text-xs text-ink-muted">
+          <thead className="sticky top-0 z-10 bg-secondary text-xs text-muted-foreground">
             <tr>
-              <th className="whitespace-nowrap px-3 py-2">Date</th>
+              <th className="whitespace-nowrap px-3 py-2 font-medium">Date</th>
               {METRICS.map((m) => (
-                <th key={m} className="px-3 py-2">
+                <th key={m} className="px-3 py-2 font-medium">
                   <span className="inline-flex items-center gap-1.5">
                     <span className="size-2 rounded-full" style={{ background: METRIC_INFO[m].accent }} aria-hidden />
                     {METRIC_INFO[m].label} ({METRIC_INFO[m].unit})
@@ -133,8 +134,8 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
           </thead>
           <tbody>
             {rows.map((o) => (
-              <tr key={o.date} className="border-t border-line">
-                <th scope="row" className="whitespace-nowrap px-3 py-1.5 font-normal tabular-nums text-ink-soft">{o.date}</th>
+              <tr key={o.date} className="border-t border-border">
+                <th scope="row" className="whitespace-nowrap px-3 py-1.5 font-normal tabular-nums text-muted-foreground">{o.date}</th>
                 {METRICS.map((m) => {
                   const k = key(o.date, m);
                   const changed = k in edits;
@@ -145,11 +146,11 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
                   const errorId = `error-${o.date}-${m}`;
                   const describedBy = [flags.length ? flagId : "", bad ? errorId : ""].filter(Boolean).join(" ") || undefined;
                   const tint = changed
-                    ? "bg-violet-500/20 shadow-[inset_0_0_0_1px_rgb(167_139_250/0.7),0_0_14px_rgb(139_92_246/0.35)]"
+                    ? "bg-primary/10 shadow-[inset_0_0_0_1.5px_var(--color-primary)]"
                     : flag === "corrected"
-                      ? "bg-teal-400/10"
+                      ? "bg-positive/5"
                       : flag
-                        ? "bg-amber-400/10"
+                        ? "bg-warning/10"
                         : "";
                   return (
                     <td
@@ -177,18 +178,18 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
                           onClick={() => open(o.date, m)}
                           aria-label={`Edit ${METRIC_INFO[m].label} on ${o.date}`}
                           aria-describedby={describedBy}
-                          className="flex w-full items-center gap-1 rounded-lg px-1.5 py-1 text-left hover:bg-glass-strong focus-visible:outline-2 focus-visible:outline-brand-soft"
+                          className="flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-left transition-colors outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           {changed ? edits[k] || "—" : formatValue(m, o[m])}
                           {flag && flag !== "corrected" && !changed && (
-                            <TriangleAlert className="size-3 shrink-0 text-warn" aria-hidden />
+                            <TriangleAlert className="size-3 shrink-0 text-warning" aria-hidden />
                           )}
                         </button>
                       )}
                       {flags.length > 0 && (
                         <span id={flagId} className="sr-only">{flags.map(describeFlag).join(", ")}</span>
                       )}
-                      {bad && <span id={errorId} className="block px-1.5 text-[11px] text-rose-300">Enter a number</span>}
+                      {bad && <span id={errorId} className="block px-1.5 text-[11px] text-negative">Enter a number</span>}
                     </td>
                   );
                 })}
@@ -199,23 +200,23 @@ export function DataEditor({ observations, dataStart, edits, onEditsChange, onSa
       </div>
 
       {changes.length > 0 && (
-        <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-400/40 bg-surface-raised px-4 py-3 shadow-[0_0_30px_rgb(139_92_246/0.35)]">
+        <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-lg">
           <p className="text-sm font-medium">
             {changes.length} unsaved change{changes.length === 1 ? "" : "s"}
           </p>
           <div className="flex gap-2">
-            <button type="button" className="btn-secondary" onClick={() => onEditsChange({})} disabled={saving}>
-              <RotateCcw className="size-4" aria-hidden /> Discard
-            </button>
-            <button type="button" className="btn-primary" onClick={save} disabled={saving || invalid || busy}>
-              <Save className="size-4" aria-hidden /> {saving ? "Saving…" : "Save changes"}
-            </button>
+            <Button variant="outline" onClick={() => onEditsChange({})} disabled={saving}>
+              <RotateCcw aria-hidden /> Discard
+            </Button>
+            <Button onClick={save} disabled={saving || invalid || busy}>
+              <Save aria-hidden /> {saving ? "Saving…" : "Save changes"}
+            </Button>
           </div>
           {busy && (
-            <p className="w-full text-sm text-ink-soft">Wait for the insight recalculation to finish before saving.</p>
+            <p className="w-full text-sm text-muted-foreground">Wait for the insight recalculation to finish before saving.</p>
           )}
-          {invalid && !busy && <p className="w-full text-sm text-rose-300">Fix the cells marked "Enter a number" to save.</p>}
-          {error && <p role="alert" className="w-full text-sm text-rose-300">{error}</p>}
+          {invalid && !busy && <p className="w-full text-sm text-negative">Fix the cells marked "Enter a number" to save.</p>}
+          {error && <p role="alert" className="w-full text-sm text-negative">{error}</p>}
         </div>
       )}
     </div>

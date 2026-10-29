@@ -40,21 +40,6 @@
   /* Chart */
   --color-baseline: #64748b;
   --color-grid: #eef0f4;
-
-  /* Transitional aliases for components not yet rebuilt in this redesign (removed in Task 8) */
-  --color-surface: #f7f8fa;
-  --color-surface-raised: #ffffff;
-  --color-glass: #ffffff;
-  --color-glass-strong: #f1f3f7;
-  --color-line: #e6e9ef;
-  --color-ink: #172033;
-  --color-ink-soft: #3b4558;
-  --color-ink-muted: #687386;
-  --color-brand: #635bff;
-  --color-brand-soft: #635bff;
-  --color-good: #16845b;
-  --color-warn: #b7791f;
-  --color-alert: #c24141;
 }
 
 html {
@@ -66,24 +51,9 @@ body {
 }
 
 @layer components {
-  /* Transitional: older components still use these; rebuilt components use ui/ primitives. */
-  .card {
-    @apply rounded-xl border border-border bg-card p-5 shadow-xs;
-  }
-  .btn-primary {
-    @apply inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none;
-  }
-  .btn-secondary {
-    @apply inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none;
-  }
+  /* Native inputs and selects that sit next to ui/ components */
   .input {
     @apply h-9 rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
-  }
-  .chip {
-    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium;
-  }
-  .eyebrow {
-    @apply text-xs font-medium text-muted-foreground;
   }
   .lp-enter {
     animation: lp-fade-in 0.25s ease-out both;

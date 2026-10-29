@@ -67,7 +67,6 @@ export function InsightCard({ insight, onFeedback, onOpenEvidence, position, tot
           <Badge variant="outline">{insight.metrics.map((m) => METRIC_INFO[m].label).join(" + ")}</Badge>
           <Badge
             variant={confidence.variant}
-            className={confidence.variant === "warning" ? "text-warning-foreground" : undefined}
             title="Based on data coverage and reliability, not on the language model"
           >
             <confidence.Icon aria-hidden />

@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { api } from "../api/client";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useAsync } from "../hooks/useAsync";
 import { ErrorState, LoadingState } from "./StateViews";
 
@@ -29,21 +31,21 @@ export function NotesPanel({ userId, date, version }: { userId: string; date: st
   }
 
   return (
-    <section className="card flex flex-col gap-3" aria-labelledby="notes-title">
+    <Card role="region" aria-labelledby="notes-title" className="flex flex-col gap-4 p-5">
       <div>
         <h2 id="notes-title" className="text-base font-semibold">Notes for {date}</h2>
-        <p className="text-xs text-ink-muted">
+        <p className="mt-1 text-xs text-muted-foreground">
           Notes may add context to explanations. They are treated as data, not instructions, and their numbers are
           never used as facts.
         </p>
       </div>
       {notes.loading && <LoadingState label="Loading notes…" />}
       {notes.error && <ErrorState error={notes.error} onRetry={notes.reload} />}
-      {notes.data && notes.data.length === 0 && <p className="text-sm text-ink-muted">No notes for this day.</p>}
+      {notes.data && notes.data.length === 0 && <p className="text-sm text-muted-foreground">No notes for this day.</p>}
       {notes.data && notes.data.length > 0 && (
         <ul className="flex flex-col gap-2 text-sm">
           {notes.data.map((n) => (
-            <li key={n.id} className="rounded-xl border border-line bg-surface-raised px-3 py-2 text-ink-soft">{n.text}</li>
+            <li key={n.id} className="rounded-md border border-border bg-background px-3 py-2">{n.text}</li>
           ))}
         </ul>
       )}
@@ -51,20 +53,20 @@ export function NotesPanel({ userId, date, version }: { userId: string; date: st
         <label htmlFor="note" className="text-sm font-medium">Add a note</label>
         <textarea
           id="note"
-          className="input min-h-16"
+          className="input h-auto min-h-20 py-2"
           maxLength={MAX_LENGTH}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="e.g. Long flight, late dinner"
         />
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-ink-muted">{text.length}/{MAX_LENGTH}</span>
-          <button type="submit" className="btn-secondary" disabled={saving || !text.trim()}>
+          <span className="text-xs text-muted-foreground">{text.length}/{MAX_LENGTH}</span>
+          <Button type="submit" variant="outline" size="sm" disabled={saving || !text.trim()}>
             {saving ? "Saving…" : "Save note"}
-          </button>
+          </Button>
         </div>
-        {error && <p role="alert" className="text-xs text-rose-300">{error}</p>}
+        {error && <p role="alert" className="text-xs text-negative">{error}</p>}
       </form>
-    </section>
+    </Card>
   );
 }

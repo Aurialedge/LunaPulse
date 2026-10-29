@@ -162,7 +162,7 @@ export function MetricCard({ baseline: b, onCorrect, history, highlighted = fals
             const corrected = flag.startsWith("corrected:");
             return (
               <li key={flag}>
-                <Badge variant={corrected ? "positive" : "warning"} className={corrected ? "" : "text-warning-foreground"}>
+                <Badge variant={corrected ? "positive" : "warning"}>
                   {corrected ? <Check aria-hidden /> : <TriangleAlert aria-hidden />}
                   {describeFlag(flag)}
                 </Badge>
