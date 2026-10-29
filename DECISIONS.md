@@ -83,3 +83,13 @@ Each profile has an IANA `timezone`. All stored and API dates are user-local cal
 
 ## D21. One report document
 `REPORT.md` covers both the PRD's technical report (algorithms, design choices, limitations, acceptance-test results) and Part B's code walkthrough (selection rules, LLM grounding). The README has a short script for the demo video, which the user records.
+
+## D22. Startup seed uses a per-user default scenario
+When the database is empty, users A–D are seeded with seed 42, 120 days ending at each user's local today, and a default scenario: A `stable_baseline`, B `reduced_sleep`, C `gradual_trend`, D `stable_baseline` (D's messy data is always present). — The dashboard shows something worth explaining on first load, and every user can be switched to any scenario.
+
+## D23. Simulation details
+- Each metric follows an AR(1) process around the profile mean (continuity), with a weekly steps pattern, a slow drift (User C), and a shared daily "recovery" factor that moves RHR up, HRV down, and sleep down together. All random draws happen before the scenario is applied, so a scenario changes only its own metric on its own recent days.
+- Scenario days are always recorded cleanly (no missing or noisy readings), except in `missing_data`.
+- User D's messy data sits at fixed offsets before the end date: a 4-day gap (42–45 days back), an out-of-range steps value (25), sleep reported in minutes (20), a +30 bpm one-day RHR spike (3), two HRV readings 20 ms apart (1), and the injection note on the end date.
+- A device `quality_marker` (e.g. `low_signal`) keeps the value and adds the flag `quality_marker:<metric>`.
+- Regenerating a user replaces all their readings and notes, including corrections and user-added notes.

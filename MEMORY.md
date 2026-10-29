@@ -18,7 +18,7 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 ## Status
 
 - [x] Phase 0 — planning & scaffold (incl. Task 3 integration)
-- [ ] Phase 1 — backend foundation & data
+- [x] Phase 1 — backend foundation & data (52 tests: 34 unit, 18 integration)
 - [ ] Phase 2 — analytics engine
 - [ ] Phase 3 — LLM, pipeline & analytics API
 - [ ] Phase 4 — frontend dashboard
@@ -30,3 +30,10 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - Project-scoped tooling: `.mcp.json` (context7, playwright), `.claude/settings.json` (plugins superpowers, ui-ux-pro-max). Restart Claude Code to load them.
 - Windows dev machine; Git Bash available. Python 3.13, Node 22.
 - Gemini key goes in `backend/.env` (gitignored). Tests must never need it.
+- Phase 1: `create_app(settings, seed_users)` in `app/main.py`; integration tests build the app with `Settings(_env_file=None, database_url=tmp)` so they never read `backend/.env`. Session factory lives on `app.state.session_factory`; `get_db` reads it.
+- Env-dependent settings are in `Settings`; every other threshold/limit is a module constant in `app/config.py`. Phase 2 adds analytics thresholds there.
+- `observations.build_observations` takes ORM `Reading`s or `ReadingData` (duck-typed `ReadingLike`). Analytics should consume `DailyObservation`s, never raw readings.
+- Windows needs the `tzdata` package for `zoneinfo` (in requirements.txt).
+- Corrections endpoint (D18) and run staleness are Phase 3; `regenerate_user` in `app/api/data.py` is where Phase 3 must also mark the user's runs stale (D1).
+- Local DB file `backend/pulselens.db` is gitignored; delete it to reseed.
+
