@@ -93,3 +93,13 @@ When the database is empty, users A–D are seeded with seed 42, 120 days ending
 - User D's messy data sits at fixed offsets before the end date: a 4-day gap (42–45 days back), an out-of-range steps value (25), sleep reported in minutes (20), a +30 bpm one-day RHR spike (3), two HRV readings 20 ms apart (1), and the injection note on the end date.
 - A device `quality_marker` (e.g. `low_signal`) keeps the value and adds the flag `quality_marker:<metric>`.
 - Regenerating a user replaces all their readings and notes, including corrections and user-added notes.
+
+## D24. Analytics details the architecture left open
+- **Rounding:** baselines round once (values to 2 dp, percentages to 1 dp) and the rules compare the rounded numbers, so the number shown is exactly the number that triggered a rule. An exactly-at-threshold change fires.
+- **Minimum absolute change:** a percent rule (steps, HRV) also needs its minimum absolute change (1000 steps, 3 ms). Otherwise it doesn't fire.
+- **Trend persistence:** the ranking's persistence component for a trend is the number of recent days on the trend's side by at least half the threshold (the same count the trend rule uses), not consecutive full-threshold days.
+- **Spikes:** spike-qualified deviations are never paired into a combined insight. A likely artefact shouldn't be presented as co-occurring with a real change.
+- **Data-quality warning:** raised for a target-day value that is missing, has an invalid unit, is out of range, conflicts, or carries a device quality marker, and for an insufficient baseline. A user correction isn't a data-quality issue.
+- **Evidence ids:** `<id_prefix>-ev<n>`. The pipeline passes the insight id as the prefix, so ids are unique per run.
+- **Tools:** bad arguments return `{"error": ...}` instead of raising, so the model gets an answer it can act on.
+- **User C:** goal raised to 10,000 steps (starting steps 5,500). That way its `gradual_trend` is an `improving_trend` (gap to goal shrinks by more than the threshold), while Users A and B show the same scenario as a neutral `trend`.
