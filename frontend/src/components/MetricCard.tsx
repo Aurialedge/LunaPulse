@@ -1,5 +1,4 @@
 import { Activity, ArrowDownRight, ArrowUpRight, Check, Footprints, HeartPulse, Info, Minus, Moon, Pencil, TriangleAlert } from "lucide-react";
-import { useState, type FormEvent } from "react";
 import type { Metric, MetricBaseline, Observation } from "../api/types";
 import { describeFlag, formatPercent, formatSigned, formatValue, METRIC_INFO } from "../format";
 import { Badge } from "@/components/ui/badge";
@@ -64,41 +63,17 @@ function Sparkline({ metric, history }: { metric: Metric; history: Observation[]
 
 interface Props {
   baseline: MetricBaseline;
-  onCorrect: (value: number) => Promise<void>;
+  onCorrect: () => void; // opens the correction dialog
   history?: Observation[]; // the 28-day observations response, for the sparkline
   highlighted?: boolean; // a current insight is about this metric (D33)
 }
 
 /** Today's value vs. the personal baseline. Every number comes from the backend. */
 export function MetricCard({ baseline: b, onCorrect, history, highlighted = false }: Props) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const id = `metric-${b.metric}`;
   const { accent, label } = METRIC_INFO[b.metric];
   const Icon = ICONS[b.metric];
   const Arrow = b.direction === "above" ? ArrowUpRight : b.direction === "below" ? ArrowDownRight : Minus;
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const value = Number(draft);
-    if (draft.trim() === "" || Number.isNaN(value)) {
-      setError("Enter a number.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      await onCorrect(value);
-      setEditing(false);
-      setDraft("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the correction.");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
     <Card
@@ -118,8 +93,8 @@ export function MetricCard({ baseline: b, onCorrect, history, highlighted = fals
           variant="ghost"
           size="icon"
           className="size-8 text-muted-foreground"
-          onClick={() => setEditing((v) => !v)}
-          aria-expanded={editing}
+          onClick={onCorrect}
+          aria-haspopup="dialog"
           aria-label={`Correct ${b.label} value`}
         >
           <Pencil aria-hidden />
@@ -197,22 +172,6 @@ export function MetricCard({ baseline: b, onCorrect, history, highlighted = fals
         </ul>
       )}
 
-      {editing && (
-        <form onSubmit={submit} className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
-          <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Corrected value ({b.unit})
-            <input
-              className="input"
-              inputMode="decimal"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              aria-describedby={error ? `${id}-error` : undefined}
-            />
-          </label>
-          <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save correction"}</Button>
-          {error && <p id={`${id}-error`} role="alert" className="w-full text-xs text-negative">{error}</p>}
-        </form>
-      )}
     </Card>
   );
 }

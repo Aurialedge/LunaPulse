@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { api } from "./api/client";
-import type { Health, Metric, Scenario, User } from "./api/types";
+import type { Health, Metric, MetricBaseline, Scenario, User } from "./api/types";
+import { CorrectionDialog } from "./components/CorrectionDialog";
 import { DataEditor, type Edits } from "./components/DataEditor";
 import { DataQualityStatus } from "./components/DataQualityStatus";
 import { InsightFeed } from "./components/InsightFeed";
@@ -103,6 +104,7 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
   // Unsaved data-editor changes. They live here so they survive switching views.
   const [edits, setEdits] = useState<Edits>({});
   const [generating, setGenerating] = useState(false);
+  const [correcting, setCorrecting] = useState<MetricBaseline | null>(null); // metric open in the correction dialog
   const baselines = useAsync(() => api.baselines(user.user_id, date), [user.user_id, date, version, user.data_end]);
   const observations = useAsync(() => api.observations(user.user_id, date), [user.user_id, date, version, user.data_end]);
 
@@ -194,7 +196,7 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
                 <MetricCard
                   key={b.metric}
                   baseline={b}
-                  onCorrect={(value) => correct(b.metric, value)}
+                  onCorrect={() => setCorrecting(b)}
                   highlighted={insightMetrics.includes(b.metric)}
                   history={observations.data?.observations}
                 />
@@ -203,6 +205,13 @@ function Workspace({ health, users, user, date, scenarios, view, onNavigate, onU
             <DataQualityStatus metrics={baselines.data.metrics} date={baselines.data.date} />
           </>
         )}
+
+        <CorrectionDialog
+          metric={correcting}
+          date={date}
+          onOpenChange={(open) => !open && setCorrecting(null)}
+          onSubmit={(value) => correct(correcting!.metric, value)}
+        />
 
         <div id="trends" className="scroll-mt-28">
           {observations.error && <ErrorState error={observations.error} onRetry={observations.reload} />}

@@ -147,10 +147,14 @@ describe("App shell", () => {
     await screen.findByRole("region", { name: "Metrics for the selected day" });
     const feedCalls = vi.mocked(api.feed).mock.calls.length;
     await userEvent.click(screen.getByRole("button", { name: "Correct Sleep value" }));
-    await userEvent.type(screen.getByLabelText(/Corrected value/), "6.6");
-    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
+    const dialog = await screen.findByRole("dialog", { name: "Correct Sleep" });
+    expect(within(dialog).getByText("5.17 h")).toBeInTheDocument();
+    await userEvent.type(within(dialog).getByLabelText("New value (hours)"), "6.6");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save correction" }));
     expect(correct).toHaveBeenCalledWith("user_a", "2026-06-30", "sleep_hours", 6.6);
     await waitFor(() => expect(vi.mocked(api.feed).mock.calls.length).toBeGreaterThan(feedCalls));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Correct Sleep" })).not.toBeInTheDocument());
+    expect(await screen.findByText("Correction saved — insights recalculated")).toBeInTheDocument();
   });
 
   it("switching user with unsaved edits asks for confirmation", async () => {

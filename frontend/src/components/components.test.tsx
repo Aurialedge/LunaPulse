@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Toaster } from "sonner";
 import { api, ApiError } from "../api/client";
 import { baselines, evidence, feed, insight, observations } from "../test/fixtures";
+import { CorrectionDialog } from "./CorrectionDialog";
 import { DataQualityStatus } from "./DataQualityStatus";
 import { EvidenceDrawer } from "./EvidenceDrawer";
 import { InsightCard } from "./InsightCard";
@@ -63,22 +64,6 @@ describe("MetricCard", () => {
     expect(spark.querySelectorAll("polyline")).toHaveLength(2); // the gap splits the line in two
   });
 
-  it("submits a correction and shows backend errors", async () => {
-    const onCorrect = vi.fn().mockRejectedValueOnce(new Error("Sleep must be between 0 and 24 hours.")).mockResolvedValue(undefined);
-    render(<MetricCard baseline={sleep} onCorrect={onCorrect} />);
-    await userEvent.click(screen.getByRole("button", { name: "Correct Sleep value" }));
-    const input = screen.getByLabelText(/Corrected value/);
-    await userEvent.type(input, "30");
-    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
-    expect(onCorrect).toHaveBeenCalledWith(30);
-    expect(await screen.findByRole("alert")).toHaveTextContent("between 0 and 24");
-    await userEvent.clear(input);
-    await userEvent.type(input, "6.6");
-    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
-    expect(onCorrect).toHaveBeenLastCalledWith(6.6);
-    await waitFor(() => expect(screen.queryByLabelText(/Corrected value/)).not.toBeInTheDocument());
-  });
-
   it("goal progress bar uses backend progress", () => {
     render(<MetricCard baseline={{ ...steps, goal_value: 9000, goal_progress_percent: 95.3 }} onCorrect={vi.fn()} />);
     const bar = screen.getByRole("progressbar", { name: "Steps goal progress" });
@@ -98,14 +83,57 @@ describe("MetricCard", () => {
     expect(screen.getByTestId("metric-sleep_hours")).toHaveAttribute("data-highlighted", "true");
   });
 
-  it("rejects non-numbers before calling the backend", async () => {
+  it("the correct-value action asks the page to open the dialog", async () => {
     const onCorrect = vi.fn();
     render(<MetricCard baseline={sleep} onCorrect={onCorrect} />);
     await userEvent.click(screen.getByRole("button", { name: "Correct Sleep value" }));
-    await userEvent.type(screen.getByLabelText(/Corrected value/), "abc");
+    expect(onCorrect).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("CorrectionDialog", () => {
+  it("shows the metric, date and current value", () => {
+    render(<CorrectionDialog metric={sleep} date="2026-06-30" onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
+    const dialog = screen.getByRole("dialog", { name: "Correct Sleep" });
+    expect(within(dialog).getByText("Tue, 30 Jun 2026")).toBeInTheDocument();
+    expect(within(dialog).getByText("5.17 h")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("New value (hours)")).toBeInTheDocument();
+  });
+
+  it("correction errors stay in the dialog", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new ApiError(422, "invalid_value", "Sleep must be between 0 and 24 hours."));
+    const onOpenChange = vi.fn();
+    render(<><Toaster /><CorrectionDialog metric={sleep} date="2026-06-30" onOpenChange={onOpenChange} onSubmit={onSubmit} /></>);
+    await userEvent.type(screen.getByLabelText("New value (hours)"), "30");
     await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
-    expect(onCorrect).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledWith(30);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sleep must be between 0 and 24 hours.");
+    expect(screen.getByRole("dialog", { name: "Correct Sleep" })).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.queryByText(/Correction saved/)).not.toBeInTheDocument();
+  });
+
+  it("rejects non-numbers before calling the backend", async () => {
+    const onSubmit = vi.fn();
+    render(<CorrectionDialog metric={sleep} date="2026-06-30" onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByLabelText("New value (hours)"), "abc");
+    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
+    expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a number.");
+  });
+
+  it("successful correction closes and confirms after the backend answers", async () => {
+    let finish: () => void = () => {};
+    const onSubmit = vi.fn().mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+    const onOpenChange = vi.fn();
+    render(<><Toaster /><CorrectionDialog metric={sleep} date="2026-06-30" onOpenChange={onOpenChange} onSubmit={onSubmit} /></>);
+    await userEvent.type(screen.getByLabelText("New value (hours)"), "6.6");
+    await userEvent.click(screen.getByRole("button", { name: "Save correction" }));
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    finish();
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(await screen.findByText("Correction saved — insights recalculated")).toBeInTheDocument();
   });
 });
 
