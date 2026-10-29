@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.config import DEFAULT_DAYS, MAX_DAYS, MAX_NOTE_LENGTH, MIN_DAYS
+from app.config import DEFAULT_DAYS, MAX_BATCH_CORRECTIONS, MAX_DAYS, MAX_NOTE_LENGTH, MIN_DAYS
 from app.simulation import SCENARIOS
 
 
@@ -265,3 +265,15 @@ class CorrectionOut(BaseModel):
     unit: str
     stale_run_count: int
     feed: FeedOut  # the regenerated feed for the corrected date
+
+
+class BatchCorrectionIn(BaseModel):
+    corrections: list[CorrectionIn] = Field(min_length=1, max_length=MAX_BATCH_CORRECTIONS)
+
+
+class BatchCorrectionOut(BaseModel):
+    user_id: str
+    saved: int
+    stale_run_count: int
+    dates: list[date]  # the corrected days, sorted
+

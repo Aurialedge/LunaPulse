@@ -25,6 +25,8 @@ from app.pipeline import (
 )
 from app.schemas import (
     BaselinesOut,
+    BatchCorrectionIn,
+    BatchCorrectionOut,
     CandidateOut,
     CorrectionIn,
     CorrectionOut,
@@ -234,3 +236,36 @@ def add_correction(
         user_id=user_id, date=target, metric=body.metric, value=value, unit=metric.unit,
         stale_run_count=stale, feed=feed_out(session, run),
     )
+
+
+@router.post("/users/{user_id}/corrections/batch", response_model=BatchCorrectionOut)
+def add_corrections_batch(user_id: str, body: BatchCorrectionIn, session: Session = Depends(get_db)) -> BatchCorrectionOut:
+    """Data editor (D29): stores every edit or none, marks affected runs outdated, and does NOT recalculate."""
+    user = get_user_or_404(session, user_id)
+    seen: set[tuple[date, str]] = set()
+    readings = []
+    for item in body.corrections:
+        where = f"{item.date} {item.metric}"
+        if (item.date, item.metric) in seen:
+            raise ApiError(422, "invalid_value", f"{where}: the same value is edited twice in one batch.")
+        seen.add((item.date, item.metric))
+        if not user.data_start <= item.date <= user.data_end:
+            raise ApiError(422, "invalid_value", f"{where}: date must be between {user.data_start} and {user.data_end}.")
+        metric = METRICS[item.metric]
+        value = float(round(item.value)) if item.metric == "steps" else item.value
+        if not is_valid_reading(ReadingData(item.date, item.metric, value, metric.unit)):
+            raise ApiError(
+                422, "invalid_value",
+                f"{where}: {metric.label} must be between {metric.min_value:g} and {metric.max_value:g} {metric.unit}.",
+            )
+        readings.append(Reading(
+            user_id=user_id, date=item.date, metric=item.metric, value=value, unit=metric.unit,
+            is_available=True, source="user_correction",
+        ))
+
+    session.add_all(readings)
+    dates = sorted({d for d, _ in seen})
+    stale = mark_runs_stale(session, user_id, dates[0] - timedelta(days=1), dates[-1] + timedelta(days=STALE_AFTER_DAYS))
+    session.commit()
+    return BatchCorrectionOut(user_id=user_id, saved=len(readings), stale_run_count=stale, dates=dates)
+

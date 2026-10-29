@@ -127,3 +127,15 @@ The app is called **LunaPulse** (not "PulseLens" as written in PRD §12). The su
 
 ## D28. No pandas
 The PRD suggests pandas and NumPy. The analytics work on at most ~120 values per metric, so Python's `statistics` module (median, mean, stdev) keeps every formula readable as written, and NumPy is used only for the seeded simulator. pandas was dropped from `requirements.txt` because nothing used it.
+
+## D29. Data editor: edit freely, recalculate on demand *(user)*
+The "Edit data" tab shows the 28 days ending at the selected date, and any cell can be changed. `POST /users/{id}/corrections/batch {corrections: [{date, metric, value}]}` (1–112 items) is all or nothing: every item is validated with the D5 unit and range rules, the date must be inside the user's data range, and a duplicate (date, metric) is rejected. Any failure gives `422 invalid_value` naming the date and metric, and nothing is stored. On success the edits are stored as `user_correction` readings and every run with `target_date ∈ [min − 1, max + 34]` is marked stale. The batch **does not** regenerate: the user presses "Recalculate insights" (Part B §5 still holds, because outdated runs are never shown). The single-value correction (D18, pencil icon) still regenerates immediately. A cell can be changed or filled, never cleared back to missing. — The user chose this over "save and recalculate" and "save each cell".
+
+## D30. `insights_outdated` (amends D11/D18) *(user)*
+`GET /users/{id}/insights?date=` returns `404 insights_outdated` when the date has a stale run and no current one, whatever made it stale (batch edit, correction, regeneration). It returns `404 insights_not_generated` only when the date never had a run. The UI shows "Data changed since these insights were made — recalculate". Recalculating is an ordinary generate: there's no current run, so a new one is created.
+
+## D31. Goal-ring progress is computed in the backend
+`GET /baselines` adds `goal_value` (steps → activity goal, sleep → sleep target, RHR/HRV → null) and `goal_progress_percent = min(100, round(100 · observed / goal, 1))`, which is null without a goal or a value. The UI only draws the ring. — Keeps golden rule 4: the frontend computes nothing.
+
+## D32. Dark, sporty theme only *(user)*
+The UI was restyled in the "dark, sporty" direction the user picked from three mockups: navy with a violet glow, glass cards, goal rings, and glowing animated chart lines. It's dark-only, with no light theme or toggle. Animations are disabled under `prefers-reduced-motion`, and text meets WCAG AA on the navy surface.

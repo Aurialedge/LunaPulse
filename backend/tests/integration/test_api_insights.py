@@ -333,3 +333,70 @@ def test_recalculating_an_outdated_day_returns_the_new_run(client):
     again = generate_insights(client).json()
     assert again["run_id"] != first["run_id"]
     assert feed(client).json()["run_id"] == again["run_id"]
+
+
+# --- batch corrections for the data editor (D29) ---
+
+
+def batch(client, items, user_id="user_a"):
+    return client.post(f"/api/v1/users/{user_id}/corrections/batch", json={"corrections": items})
+
+
+def observation_on(client, day, user_id="user_a"):
+    body = client.get(f"/api/v1/users/{user_id}/observations", params={"start": day.isoformat(), "end": day.isoformat()}).json()
+    return body["observations"][0]
+
+
+def test_batch_saves_all_edits_marks_stale_and_does_not_regenerate(client):
+    generate_data(client)
+    generate_insights(client, day=END)
+    two_back = END - timedelta(days=2)
+    response = batch(client, [
+        {"date": END.isoformat(), "metric": "sleep_hours", "value": 7.4},
+        {"date": two_back.isoformat(), "metric": "steps", "value": 12345.6},
+    ])
+    assert response.status_code == 200, response.text
+    assert response.json() == {
+        "user_id": "user_a", "saved": 2, "stale_run_count": 1, "dates": [two_back.isoformat(), END.isoformat()],
+    }
+    assert_error(feed(client, day=END), 404, "insights_outdated")
+    today = observation_on(client, END)
+    assert today["sleep_hours"] == 7.4 and "corrected:sleep_hours" in today["data_quality_flags"]
+    earlier = observation_on(client, two_back)
+    assert earlier["steps"] == 12346 and "corrected:steps" in earlier["data_quality_flags"]
+
+
+def test_batch_is_all_or_nothing(client):
+    generate_data(client)
+    before = observation_on(client, END)
+    response = batch(client, [
+        {"date": END.isoformat(), "metric": "steps", "value": 5000},
+        {"date": END.isoformat(), "metric": "sleep_hours", "value": 30},
+    ])
+    assert_error(response, 422, "invalid_value")
+    message = response.json()["error"]["message"]
+    assert END.isoformat() in message and "sleep_hours" in message
+    assert observation_on(client, END) == before
+
+
+def test_batch_can_fill_a_missing_day(client):
+    generate_data(client, scenario="missing_data")
+    assert observation_on(client, END)["sleep_hours"] is None
+    assert batch(client, [{"date": END.isoformat(), "metric": "sleep_hours", "value": 7.1}]).status_code == 200
+    filled = observation_on(client, END)
+    assert filled["sleep_hours"] == 7.1
+    assert "corrected:sleep_hours" in filled["data_quality_flags"]
+    assert "missing:sleep_hours" not in filled["data_quality_flags"]
+
+
+def test_batch_invalid_inputs(client):
+    generate_data(client)
+    day = END.isoformat()
+    assert_error(batch(client, []), 422, "validation_error")
+    too_many = [{"date": (END - timedelta(days=i // 4)).isoformat(), "metric": "steps", "value": 1} for i in range(113)]
+    assert_error(batch(client, too_many), 422, "validation_error")
+    duplicate = [{"date": day, "metric": "steps", "value": 1}, {"date": day, "metric": "steps", "value": 2}]
+    assert_error(batch(client, duplicate), 422, "invalid_value")
+    assert_error(batch(client, [{"date": day, "metric": "steps", "value": 1}], user_id="nobody"), 404, "user_not_found")
+    assert_error(batch(client, [{"date": "2020-01-01", "metric": "steps", "value": 1}]), 422, "invalid_value")
+    assert_error(batch(client, [{"date": day, "metric": "weight", "value": 1}]), 422, "validation_error")
