@@ -9,8 +9,8 @@ LunaPulse turns simulated wearable readings into **at most three daily insights*
 | Result | |
 |---|---|
 | Backend tests | **191 passed** (142 unit, 49 API integration), Gemini always mocked |
-| Frontend tests | **58 passed** (Vitest + React Testing Library) |
-| End-to-end tests | **9 passed** (Playwright, real backend in fallback mode, real UI), stable over repeated runs |
+| Frontend tests | **81 passed** (Vitest + React Testing Library) |
+| End-to-end tests | **10 passed** (Playwright, real backend in fallback mode, real UI, incl. the evidence → correction → update flow and a 390 px mobile check), stable over repeated runs |
 | Live Gemini | full tool loop verified with a real key: tool call → grounded JSON → validated → stored (§7) |
 | Type-check / lint / build | clean |
 
@@ -119,8 +119,8 @@ All suites run without a Gemini key. Gemini is replaced by scripted fakes ([`tes
 |---|---|---|
 | `backend/tests/unit` (simulation 21, observations 13, baselines 14, candidates 42, ranking 10, evidence 10, tools 5, explanations 27) | 142 | ✅ pass |
 | `backend/tests/integration` (data API 18, analytics API 31) | 49 | ✅ pass |
-| `frontend/src/**/*.test.ts(x)` (client 4, components 30, data editor 16, App 8) | 58 | ✅ pass |
-| `frontend/e2e` (Playwright, real backend + UI) | 9 | ✅ pass, repeated runs |
+| `frontend/src/**/*.test.ts(x)` (client 4, ui 3, components 42, data editor 16, App 16) | 81 | ✅ pass |
+| `frontend/e2e` (Playwright, real backend + UI) | 10 | ✅ pass, repeated runs |
 
 ### PRD §15 checklist
 
@@ -180,7 +180,7 @@ All suites run without a Gemini key. Gemini is replaced by scripted fakes ([`tes
 
 ## 6b. Dashboard and data editor
 
-The UI is dark and sporty (D32): glass cards, goal rings for steps and sleep, and glowing trend lines that draw themselves in. It's accessible: AA-contrast tokens, icons with labels for status, keyboard-reachable tabs and table cells, and no motion under `prefers-reduced-motion`. Goal-ring progress is computed by the backend (D31). The **Edit data** tab lets a reviewer change any of the last 28 days. Saving is all or nothing (`/corrections/batch`, D29) and marks every affected run stale; the feed then answers `insights_outdated` (D30) and offers **Recalculate insights**, so an outdated insight is never shown (Part B §5).
+The UI is a light, production-style dashboard built to `design.md` with shadcn/ui primitives (D35–D37): a sidebar with a mobile drawer, a top bar, metric cards with sparklines and goal progress, a trends section, a prominent insight feed with an evidence drawer, and a correction dialog. It's accessible: AA-contrast tokens, icons with text for status, Radix focus management for dialogs and drawers, keyboard navigation in the editor, and no motion under `prefers-reduced-motion`. Goal-ring progress is computed by the backend (D31). The **Edit data** tab lets a reviewer change any of the last 28 days. Saving is all or nothing (`/corrections/batch`, D29) and marks every affected run stale; the feed then answers `insights_outdated` (D30) and offers **Recalculate insights**, so an outdated insight is never shown (Part B §5).
 
 ## 7. Live Gemini verification
 

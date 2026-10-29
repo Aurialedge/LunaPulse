@@ -70,9 +70,9 @@ Every threshold and weight is a named constant in [`backend/app/config.py`](back
 
 ```bash
 cd backend && pytest                 # 191 tests: unit + API integration, Gemini always mocked
-cd frontend && npm test              # 58 Vitest + React Testing Library tests
+cd frontend && npm test              # 81 Vitest + React Testing Library tests
 cd frontend && npx playwright install chromium && npm run test:e2e
-                                     # 9 Playwright tests: real backend (fallback mode, temp DB) + real UI
+                                     # 10 Playwright tests: real backend (fallback mode, temp DB) + real UI
 cd frontend && npm run build && npm run lint
 ```
 
@@ -80,11 +80,19 @@ No test needs a Gemini key. The e2e suite starts its own backend on port 8001 wi
 
 ## Using the dashboard
 
-The UI is dark and sporty (D32): goal rings for steps and sleep, glowing animated trend lines, and glass cards. Animations switch off when your device asks for reduced motion.
+The UI is a light, production-style analytics dashboard (design spec: [`design.md`](design.md), D35–D37), built with shadcn/ui primitives (Radix) on Tailwind. It's responsive (sidebar on desktop, navigation drawer on phones and tablets), keyboard accessible, and respects reduced-motion settings.
 
-- **Dashboard tab:** the day's four metrics against the personal baseline. Each tile glows when a current insight is about it. Below are the trend chart (metric and 7/28-day switches, table view), the top insights with **Why am I seeing this?**, and notes.
-- **Edit data tab:** the 28 days ending at the selected date. Click any value to change it or fill a gap. Edited cells glow until you **Save changes**, which stores them all at once and checks each against plausible ranges (D29). Affected insights become *outdated*: the feed hides them and offers **Recalculate insights**. A value can be changed but not cleared back to missing.
-- **Pencil on a tile:** the quick single correction; it recalculates that day straight away (D18).
+- **Sidebar:** **Overview**; **Insights** and **Trends** jump to those sections; **Edit data**. The footer shows whether explanations come from Gemini or the template.
+- **Top bar:** the synthetic user, the date (bounded by the user's data), **Refresh** (re-fetches every panel), a data-status indicator, and **Demo data** (regenerate a user's history with a scenario).
+- **Overview:**
+  - "Your daily insights" with the user's goals and timezone;
+  - four metric cards (value, personal baseline, change, a sparkline of the real 28 days with gaps for missing days, goal progress, data-quality badges);
+  - the data-quality notice;
+  - the trends chart (metric tabs, 7/28 days, dashed personal-baseline line, table view);
+  - the insight feed: at most three cards in backend order, each with an evidence summary, confidence, a feedback menu, and **Why am I seeing this?**, which opens the evidence drawer (evidence table, supporting-days chart with the target day highlighted, ranking breakdown, confidence explanation);
+  - notes.
+- **Correct a value:** the pencil on a metric card opens a dialog with the current value. Saving stores the correction and recalculates that day (D18), confirmed with a toast once the backend answers.
+- **Edit data:** the 28 days ending at the selected date. Click any value to change it or fill a gap; Enter or Tab moves to the next cell. **Save changes** stores every edit at once (D29). Affected insights become *outdated*, and the feed offers **Recalculate insights**. A value can be changed but not cleared back to missing.
 - Data always comes from the simulator. There's no upload, by design (PRD: synthetic data only).
 
 ## Demo users and scenarios
@@ -151,13 +159,13 @@ Errors always look like `{"error": {"code", "message"}}`, with no stack traces o
 
 ## Demo video script (≈ 3 minutes)
 
-1. **Intro (15 s):** open http://localhost:5173. Point out the synthetic-data banner and "Explanations: Gemini (validated)".
-2. **Daily feed (45 s):** select **User B** (scenario `reduced_sleep`) and press **Generate insights**. Show the ranked cards: headline, explanation, confidence, the "Explained by Gemini" badge, and "All candidates considered" (the sleep trend suppressed as redundant).
-3. **Evidence (40 s):** click **Why am I seeing this?** on the sleep card. Show the day's value, the 28-day median, the difference, the robust z, the rule and threshold, and the supporting days. Open the trend chart and switch to Sleep to see the drop against the dashed baseline line.
-4. **Correction (40 s):** click the pencil on the Sleep card, enter the baseline value (≈ 6.6), and save. The card shows "Corrected by you", the old insight disappears, and the feed is recomputed without the sleep deviation.
+1. **Intro (15 s):** open http://localhost:5173. Point out the sidebar, the synthetic-data notice, and "Explanations: Gemini (validated)" in the sidebar footer.
+2. **Daily feed (45 s):** select **User B** (scenario `reduced_sleep`) in the top bar and press **Generate insights**. Show the ranked cards: headline, explanation, confidence, the "Explained by Gemini" badge, and "All candidates considered" (the sleep trend suppressed as redundant).
+3. **Evidence (40 s):** click **Why am I seeing this?** on the sleep card. The drawer shows the day's value, the 28-day median, the difference, the robust z, the rule and threshold, the supporting days (target day highlighted), and why it ranked #1. Close it, then switch the trends chart to **Sleep** to see the drop against the dashed baseline line.
+4. **Correction (40 s):** click the pencil on the Sleep card. The dialog shows the date and current value; enter the baseline value (≈ 6.6) and press **Save correction**. A toast confirms, the card shows "Corrected by you", the chart updates, and the feed is recomputed without the sleep deviation.
 5. **Messy data and safety (30 s):** select **User D** and show the injection note. Generate insights and show that no "HRV improved 40%" insight appears. Pick the spike date (3 days back) to show the low-confidence "may be a measurement artefact" card.
-6. **Edit data (30 s):** open the **Edit data** tab, change two cells (they glow), press **Save changes**, return to **Dashboard**: "Data changed since these insights were made" → **Recalculate insights**.
-7. **Feedback (10 s):** press **Dismiss** on a card, then show the hidden-insights toggle.
+6. **Edit data (30 s):** choose **Edit data** in the sidebar, change two cells (they're outlined), press **Save changes**, return to **Overview**: "Data changed since these insights were made" → **Recalculate insights**.
+7. **Feedback and mobile (15 s):** open a card's **⋯** menu → **Dismiss** (toast), then show the hidden-insights toggle. Narrow the window to show the navigation drawer.
 
 ## Project layout
 
@@ -167,6 +175,6 @@ backend/   FastAPI + SQLAlchemy + Pydantic; analytics in plain Python (statistic
                 ranking, evidence, tools, explanations, pipeline, api/{data,insights,errors}, main
   tests/        unit/ (pure functions), integration/ (API, temp SQLite), fakes.py (scripted Gemini)
 frontend/  React + TypeScript + Vite + Tailwind + Recharts + lucide-react
-  src/          api/ (client, types), hooks/useAsync, components/, format.ts, App.tsx
+  src/          api/ (client, types), hooks/useAsync, components/ (layout/, ui/ = shadcn), lib/utils, format.ts, App.tsx
   e2e/          Playwright tests against the real backend
 ```

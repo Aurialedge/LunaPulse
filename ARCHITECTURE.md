@@ -157,15 +157,20 @@ Errors look like `{"error": {"code": "...", "message": "..."}}` with 400/404/422
 api/        client.ts (typed fetch wrapper), types.ts (mirrors backend schemas)
 hooks/      useAsync.ts
 format.ts   display formatting only (units, separators, flag text); never statistics
-components/ Header (logo, disclaimer), Controls (user · date · scenario + tab bar), MetricCard (goal ring,
-            highlight, + correct value), TrendChart (glowing animated line, metric switch, 7/28 d, baseline
-            line), DataEditor (28-day table, batch save), InsightFeed (+ outdated state), InsightCard
-            (headline, explanation, confidence, dismiss/irrelevant, "Why am I seeing this?" → EvidencePanel),
-            NotesPanel, DataQualityStatus, ProviderBadge, StateViews (loading/empty/error/insufficient)
-App.tsx     page composition: selected user/date, Dashboard / Edit data tabs, unsaved edits
+components/ layout/ AppLayout (sidebar + mobile drawer + top bar slot), Sidebar (navigation), TopBar (user · date ·
+              Refresh · status · Demo data dialog)
+            ui/ shadcn/ui primitives on Radix: button, card, badge, dialog, sheet, tabs, tooltip, dropdown-menu,
+              skeleton, separator (owned source, React 18 forwardRef where Radix passes refs)
+            MetricCard (value, baseline, change, sparkline, goal progress, flags) · TrendChart (metric tabs,
+            7/28 d, baseline reference line, table view) · InsightFeed (+ outdated state, evidence drawer state) ·
+            InsightCard (evidence summary, confidence, feedback menu) · EvidenceDrawer + EvidencePanel (records,
+            supporting-days chart, ranking, confidence explanation) · CorrectionDialog · DataEditor (28-day table,
+            batch save) · NotesPanel · DataQualityStatus · StateViews (loading/empty/error)
+lib/        utils.ts (cn)
+App.tsx     App (user, date, view, navigation) and Workspace (per user: version, edits, correction dialog)
 test/       Vitest setup and fixtures
 ```
 
 `frontend/e2e/` holds the Playwright tests. `playwright.config.ts` starts the real backend in fallback mode (temp DB, port 8001) and Vite (port 5174).
 
-Every number on screen comes from an API response, including goal-ring progress (D31). The frontend never computes statistics. Theme tokens live in `index.css` (`@theme`). Every animation is disabled under `prefers-reduced-motion`.
+Every number on screen comes from an API response, including goal progress (D31); sparklines and evidence bars only draw returned values. The frontend never computes statistics. Theme tokens live in `index.css` (`@theme`). Every animation is disabled under `prefers-reduced-motion`.

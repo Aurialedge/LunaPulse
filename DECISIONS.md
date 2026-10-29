@@ -145,3 +145,21 @@ A metric tile gets its glowing border when a **current** insight is about that m
 
 ## D34. Runs that overlap a data change are born outdated
 `generate_run` notes the user's newest reading id before loading data. If any reading in the run's history window is saved before the run is committed (e.g. a data-editor save while Gemini is still explaining), the run is stored with `is_stale = true`, so the feed reports `insights_outdated` instead of showing insights built from old data. The UI also keeps both tabs mounted, so a running recalculation stays visible, and disables **Save changes** while one runs.
+
+## D35. shadcn/ui primitives *(user)*
+The user asked for shadcn/ui, although `design.md` §2 says to avoid unnecessary libraries. Only the primitives the spec needs are added, as owned source in `frontend/src/components/ui`: Button, Card, Badge, Dialog, Sheet, Tabs, Tooltip, DropdownMenu, Skeleton, Separator, with sonner for toasts. This brings in Radix UI, `class-variance-authority`, `clsx` and `tailwind-merge`. The shadcn source targets React 19, so Button and DialogOverlay use `forwardRef` on React 18. Native `<select>` stays for the user and scenario choices: it's robust on mobile and works with standard test tooling.
+
+## D36. Light production theme (supersedes D32) *(user)*
+The UI follows `design.md` §3:
+- page `#F7F8FA`, surface `#FFFFFF`, text `#172033` / `#687386`, accent `#635BFF`, border `#E6E9EF`;
+- status colours positive `#16845B`, warning `#B7791F` (text uses `#8A5A12` for contrast), negative `#C24141`;
+- thin borders, subtle shadows, no glows, glass or decorative gradients.
+
+Status is always shown with an icon or text. Change arrows are neutral grey, because a higher or lower value isn't automatically good or bad. Motion is limited to short fades and slides and is off under `prefers-reduced-motion`.
+
+## D37. Layout mapping *(user: "do what's best")*
+- **Sidebar:** Overview / Insights / Trends / Edit data (no non-functional items). On phones and tablets (< lg) it becomes a Sheet drawer.
+- **Top bar:** title, user, date, Refresh, data status, and a **Demo data** dialog for scenarios. A dialog, not a menu, because it holds a form.
+- **Overview order** follows `design.md` §4C.
+- **Evidence** opens in a side drawer whose state lives in `InsightFeed`, closed on any date or data change. **Corrections** use a dialog.
+- **Insight cards** fetch their own evidence (≤ 3 requests) to show observed vs. baseline, because the feed response doesn't include it.
