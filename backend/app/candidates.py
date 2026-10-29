@@ -71,6 +71,7 @@ def rule_threshold_text(metric: str) -> str:
     unit = METRICS[metric].unit
     if rule["kind"] == "percent":
         return f"|change| >= {rule['value']:g}% of the baseline median (median > 0) and >= {rule['min_absolute']:g} {unit}"
+    unit = unit[:-1] if rule["value"] == 1 and unit.endswith("s") else unit  # "1 hour", not "1 hours"
     return f"|change| >= {rule['value']:g} {unit} from the baseline median"
 
 

@@ -30,3 +30,7 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Playwright MCP screenshots/snapshots
+.playwright-mcp/
+*.tsbuildinfo

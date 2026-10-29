@@ -252,7 +252,7 @@ def build_payload(insights: Sequence[InsightForLlm], target_date: date, note: st
             "direction": c.direction,
             "interpretation": c.interpretation,
             "persistence_days": c.persistence_days,
-            "goal": c.goal,
+            "goal": _whole_numbers_as_int(c.goal),
             "qualifiers": c.qualifiers,
             "limitations": c.limitations,
             "evidence": [_evidence_for_llm(r) for r in item.records],
@@ -265,7 +265,18 @@ def build_payload(insights: Sequence[InsightForLlm], target_date: date, note: st
 
 def _evidence_for_llm(record: EvidenceRecord) -> dict:
     data = {k: v for k, v in vars(record).items() if k != "user_id"}
-    return json.loads(json.dumps(data, default=str))
+    return _whole_numbers_as_int(json.loads(json.dumps(data, default=str)))
+
+
+def _whole_numbers_as_int(value):
+    """9672.0 -> 9672, so the model doesn't copy a meaningless ".0" into its text."""
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, list):
+        return [_whole_numbers_as_int(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _whole_numbers_as_int(v) for k, v in value.items()}
+    return value
 
 
 # --- numeric-claim and safety validation (D10) ---

@@ -37,7 +37,7 @@ def test_deviation_evidence_matches_the_calculation():
     assert record.baseline_window_end == TARGET - timedelta(days=1)
     assert record.valid_observation_count == 28
     assert record.rule_id == "deviation.sleep_hours.v1"
-    assert "1 hours" in record.rule_threshold
+    assert "1 hour from the baseline median" in record.rule_threshold
     assert record.supporting_observation_dates[-1] == TARGET and record.supporting_observation_values[-1] == 5.5
     assert len(record.supporting_observation_dates) == len(record.supporting_observation_values) == 7
 

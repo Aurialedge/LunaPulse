@@ -21,7 +21,7 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - [x] Phase 1 — backend foundation & data (52 tests: 34 unit, 18 integration)
 - [x] Phase 2 — analytics engine (133 backend tests total)
 - [x] Phase 3 — LLM, pipeline & analytics API (181 backend tests; real Gemini verified end to end)
-- [ ] Phase 4 — frontend dashboard
+- [x] Phase 4 — frontend dashboard (32 Vitest tests; checked live with real Gemini at 1280px and 390px)
 - [ ] Phase 5 — e2e & docs
 
 ## Notes / gotchas
@@ -44,4 +44,8 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - Phase 3: `app.state.chat_factory` is None in fallback mode; tests set it to `tests/fakes.py` (`ScriptedChat` for exact turns, `PayloadAwareChat` for answers built from the payload). The real `GeminiChat` is checked by hand, never in pytest.
 - A real Gemini generation takes 15–35 s (tool round plus answer) and `gemini-3.5-flash` still returns 503 sometimes. The UI needs a clear "generating…" state, and a fallback result is normal, not an error.
 - `google-genai` upgraded to 2.30.0 (1.14 lacked `parameters_json_schema`/retry options). Run `pip install -r requirements.txt` after pulling.
+- Phase 4: run the backend on :8000 and `npm run dev` in `frontend/` (Vite proxies /api). Component tests mock with `vi.spyOn(api, ...)`, and setup restores mocks after each test. Gotcha: `beforeEach(() => vi.spyOn(...))` RETURNS the spy, and Vitest calls the returned function as cleanup, which hits the real API. Always use a braced body.
+- jsdom can't type into `<input type="date">`; use `fireEvent.change`. Recharts needs the ResizeObserver stub in `src/test/setup.ts`.
+- Vite hot reload can reset the selected user to User A. Re-select the user before a manual demo action.
+- Playwright MCP screenshots go to `.playwright-mcp/` (gitignored).
 

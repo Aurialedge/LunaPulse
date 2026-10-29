@@ -113,3 +113,11 @@ When the database is empty, users A–D are seeded with seed 42, 120 days ending
 - **Dropped insights:** stored only in the run's `candidates` (`status: dropped_by_llm`, `drop_reason`), never as insight rows. Remaining insights keep their deterministic rank.
 - **Defaults and limits:** the feed, baselines, and generate endpoints default to the user's latest data day (never after their local today) and reject dates outside the user's data range (`422 date_out_of_range`).
 
+
+## D26. Frontend choices
+- **No API base URL in the browser:** the Vite dev/preview server proxies `/api` to FastAPI (`PULSELENS_API_URL`, default `http://localhost:8000`). The browser never needs CORS settings, and the Gemini key stays on the backend.
+- **Panels load their own data** through `useAsync`. The page passes a `version` number that it bumps after a scenario change or a correction, so every panel re-fetches from the backend rather than patching local state.
+- **The default date** is the earlier of the user's local `today` and their `data_end` (both from `GET /users`). The browser's clock is never used (D19).
+- **Charts:** one series per chart, drawn as straight segments (no smoothing, which would suggest values that were never measured) with gaps for missing days, the baseline median as a dashed reference line, a hover tooltip, and a table view for accessibility. A single series needs no legend; the title names the metric.
+- **Light theme only.** The PRD doesn't ask for dark mode.
+- **The production bundle is ~600 kB** (mostly Recharts). Code-splitting isn't worth the complexity for a single-page demo.
