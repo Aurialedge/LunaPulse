@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import data, insights
-from app.api.errors import register_error_handlers
+from app.api.errors import register_error_handlers, reject_oversized_bodies
 from app.config import Settings
 from app.db import init_db, make_engine, make_session_factory
 from app.pipeline import gemini_chat_factory
@@ -40,6 +40,7 @@ def create_app(settings: Settings | None = None, seed_users: bool = True) -> Fas
         CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"], allow_headers=["*"]
     )
     register_error_handlers(app)
+    reject_oversized_bodies(app)
     app.include_router(data.router)
     app.include_router(insights.router)
     return app

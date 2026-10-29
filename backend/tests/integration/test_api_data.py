@@ -154,6 +154,20 @@ def test_generate_invalid_inputs(client):
     assert_error(client.post("/api/v1/simulation/generate", json={"scenario": "stable_baseline"}), 422, "validation_error")
 
 
+def test_generate_rejects_an_end_date_after_the_users_local_today(client):
+    # Data that starts after "today" would leave the user with no selectable day at all
+    tomorrow = local_today("America/New_York") + timedelta(days=1)
+    assert_error(generate(client, end_date=tomorrow.isoformat()), 422, "date_in_future")
+    assert_error(generate(client, end_date="9999-12-31"), 422, "date_in_future")
+    assert client.get("/api/v1/users/user_a/baselines").status_code == 200  # the user is untouched
+
+
+def test_oversized_request_bodies_are_rejected(client):
+    body = '{"user_id": "user_a", "scenario": "stable_baseline", "pad": "' + "x" * 2_000_000 + '"}'
+    response = client.post("/api/v1/simulation/generate", content=body, headers={"Content-Type": "application/json"})
+    assert_error(response, 413, "payload_too_large")
+
+
 # --- notes ---
 
 
@@ -189,3 +203,7 @@ def test_notes_invalid_inputs(client):
     assert_error(client.post(url, json={"date": "06/01/2026", "text": "x"}), 422, "validation_error")
     future = (local_today("America/New_York") + timedelta(days=2)).isoformat()
     assert_error(client.post(url, json={"date": future, "text": "x"}), 422, "date_in_future")
+    generate(client)
+    assert_error(client.post(url, json={"date": "1800-01-01", "text": "x"}), 422, "date_out_of_range")
+    assert_error(client.post(url, json={"date": "2026-06-01", "text": "null\x00byte"}), 422, "validation_error")
+    assert client.post(url, json={"date": "2026-06-01", "text": "two\nlines\tok"}).status_code == 201

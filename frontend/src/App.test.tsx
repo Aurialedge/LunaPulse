@@ -73,6 +73,27 @@ describe("App shell", () => {
     expect(screen.getByTestId("metric-sleep_hours")).toHaveAttribute("aria-busy", "true");
   });
 
+  it("a typed date outside the user's data is not loaded and explains the allowed range", async () => {
+    render(<App />);
+    await screen.findByRole("region", { name: "Metrics for the selected day" });
+    const baselines = vi.spyOn(api, "baselines");
+    const input = screen.getByLabelText("Date", { selector: "input" });
+    for (const outside of ["1999-01-01", "2099-01-01"]) {
+      fireEvent.change(input, { target: { value: outside } });
+      expect(input).toHaveValue(outside); // what was typed stays, so the user can keep typing
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByText("Choose a date from 2026-03-03 to 2026-06-30.")).toBeInTheDocument();
+    }
+    expect(baselines).not.toHaveBeenCalled();
+    expect(screen.getByRole("region", { name: "Metrics for the selected day" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "2026-06-20" } });
+    await waitFor(() => expect(baselines).toHaveBeenCalledWith("user_a", "2026-06-20"));
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText(/Choose a date from/)).not.toBeInTheDocument();
+  });
+
   it("the correction dialog shows the date of the values it shows", async () => {
     render(<App />);
     await screen.findByRole("region", { name: "Metrics for the selected day" });

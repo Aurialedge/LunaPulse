@@ -17,6 +17,7 @@ import type {
 } from "./types";
 
 const BASE = "/api/v1";
+const UNREACHABLE = "Could not reach the LunaPulse API. Is the backend running?";
 
 /** A backend error: `{"error": {"code", "message"}}`, or a network failure (code "network_error"). */
 export class ApiError extends Error {
@@ -37,7 +38,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       headers: init?.body ? { "Content-Type": "application/json" } : undefined,
     });
   } catch {
-    throw new ApiError(0, "network_error", "Could not reach the LunaPulse API. Is the backend running?");
+    throw new ApiError(0, "network_error", UNREACHABLE);
   }
   if (!response.ok) {
     let code = "http_error";
@@ -47,7 +48,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       code = body.error?.code ?? code;
       message = body.error?.message ?? message;
     } catch {
-      // not JSON: keep the generic message
+      // Not JSON. The backend always answers errors in JSON, so a bare 5xx comes from the dev proxy: the backend is down.
+      if (response.status >= 500) {
+        code = "network_error";
+        message = UNREACHABLE;
+      }
     }
     throw new ApiError(response.status, code, message);
   }

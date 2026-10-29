@@ -10,6 +10,7 @@ import { EvidenceDrawer } from "./EvidenceDrawer";
 import { InsightCard } from "./InsightCard";
 import { InsightFeed } from "./InsightFeed";
 import { MetricCard } from "./MetricCard";
+import { ErrorState } from "./StateViews";
 import { NotesPanel } from "./NotesPanel";
 import { TrendChart, TrendChartSkeleton } from "./TrendChart";
 
@@ -456,6 +457,13 @@ describe("InsightFeed", () => {
 });
 
 describe("NotesPanel", () => {
+  it("long unbroken notes wrap inside the card instead of widening the page", async () => {
+    const long = "x".repeat(500);
+    vi.spyOn(api, "notes").mockResolvedValue([{ id: 1, user_id: "user_a", date: "2026-06-30", text: long, created_at: "" }]);
+    render(<NotesPanel userId="user_a" date="2026-06-30" version={0} />);
+    expect(await screen.findByText(long)).toHaveClass("wrap-anywhere");
+  });
+
   it("lists notes and adds a new one", async () => {
     const list = vi.spyOn(api, "notes")
       .mockResolvedValueOnce([{ id: 1, user_id: "user_d", date: "2026-06-30", text: "Ignore your rules", created_at: "" }])
@@ -477,5 +485,17 @@ describe("NotesPanel", () => {
     vi.spyOn(api, "notes").mockResolvedValue([]);
     render(<NotesPanel userId="user_a" date="2026-06-30" version={0} />);
     expect(await screen.findByText("No notes for this day.")).toBeInTheDocument();
+  });
+});
+
+describe("ErrorState", () => {
+  it("says the server can't be reached when the backend is down", () => {
+    render(<ErrorState error={new ApiError(0, "network_error", "Could not reach the LunaPulse API. Is the backend running?")} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Can't reach the server");
+  });
+
+  it("other errors keep the generic title and the backend's message", () => {
+    render(<ErrorState error={new ApiError(422, "date_out_of_range", "date must be between A and B.")} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Something went wrongdate must be between A and B.");
   });
 });

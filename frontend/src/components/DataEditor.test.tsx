@@ -87,7 +87,7 @@ describe("DataEditor", () => {
 
   it("backend errors are shown in the bar", async () => {
     vi.spyOn(api, "correctBatch").mockRejectedValue(
-      new ApiError(422, "invalid_value", "2026-06-30 sleep_hours: Sleep must be between 0 and 24 hours."),
+      new ApiError(422, "invalid_value", "2026-06-30: Sleep must be between 0 and 24 hours."),
     );
     render(<Harness />);
     await editCell("2026-06-30", "sleep_hours", "6.6");

@@ -6,6 +6,10 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
+
+from app.config import MAX_REQUEST_BYTES
 
 logger = logging.getLogger("lunapulse")
 
@@ -45,3 +49,14 @@ def register_error_handlers(app: FastAPI) -> None:
     async def unexpected_error(_: Request, exc: Exception) -> JSONResponse:
         logger.exception("Unhandled error")
         return _error(500, "internal_error", "Something went wrong on the server.")
+
+
+def reject_oversized_bodies(app: FastAPI) -> None:
+    """Refuses bodies larger than any real request before reading them, so a huge upload can't tie up the server."""
+
+    @app.middleware("http")
+    async def limit_body_size(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        length = request.headers.get("content-length", "0")
+        if not length.isdigit() or int(length) > MAX_REQUEST_BYTES:
+            return _error(413, "payload_too_large", f"Request bodies are limited to {MAX_REQUEST_BYTES // 1024} KB.")
+        return await call_next(request)

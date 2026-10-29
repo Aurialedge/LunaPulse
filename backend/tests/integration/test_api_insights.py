@@ -227,6 +227,11 @@ def test_correction_invalid_inputs(client):
     assert_error(client.post(url, json={"date": day, "metric": "steps", "value": -10}), 422, "invalid_value")
     assert_error(client.post(url, json={"date": day, "metric": "weight", "value": 70}), 422, "validation_error")
     assert_error(client.post(url, json={"date": day, "metric": "steps", "value": "lots"}), 422, "validation_error")
+    assert_error(client.post(url, json={"date": day, "metric": "steps", "value": "8000"}), 422, "validation_error")
+    assert_error(client.post(url, json={"date": day, "metric": "sleep_hours", "value": True}), 422, "validation_error")
+    assert_error(client.post(url, json={"date": day, "metric": "sleep_hours", "value": None}), 422, "validation_error")
+    batch = "/api/v1/users/user_a/corrections/batch"
+    assert_error(client.post(batch, json={"corrections": [{"date": day, "metric": "steps", "value": True}]}), 422, "validation_error")
     assert_error(client.post(url, json={"date": "2020-01-01", "metric": "steps", "value": 100}), 422, "date_out_of_range")
     assert_error(client.post("/api/v1/users/nobody/corrections", json={"date": day, "metric": "steps", "value": 1}), 404, "user_not_found")
 
@@ -375,7 +380,8 @@ def test_batch_is_all_or_nothing(client):
     ])
     assert_error(response, 422, "invalid_value")
     message = response.json()["error"]["message"]
-    assert END.isoformat() in message and "sleep_hours" in message
+    # Shown to the user as-is, so it names the metric the way the UI does
+    assert message == f"{END.isoformat()}: Sleep must be between 0 and 24 hours."
     assert observation_on(client, END) == before
 
 

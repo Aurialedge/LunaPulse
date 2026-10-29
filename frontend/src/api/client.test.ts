@@ -30,6 +30,20 @@ describe("api client", () => {
     expect(error).toMatchObject({ status: 404, code: "insights_not_generated", message: "No current insights." });
   });
 
+  it("a bare 5xx from the dev proxy (backend down) reads as unreachable, not as a server bug", async () => {
+    for (const status of [500, 502, 504]) {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status }));
+      const error = await api.users().catch((e) => e);
+      expect(error).toMatchObject({ status, code: "network_error", message: "Could not reach the LunaPulse API. Is the backend running?" });
+    }
+  });
+
+  it("the backend's own 500 keeps its message", async () => {
+    respond(500, { error: { code: "internal_error", message: "Something went wrong on the server." } });
+    const error = await api.users().catch((e) => e);
+    expect(error).toMatchObject({ code: "internal_error", message: "Something went wrong on the server." });
+  });
+
   it("reports network failures clearly", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
     const error = await api.users().catch((e) => e);

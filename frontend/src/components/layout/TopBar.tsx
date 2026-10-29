@@ -28,6 +28,18 @@ interface Props {
 /** Page title plus the controls that pick what the whole page shows. */
 export function TopBar({ title, users, user, date, scenarios, status, onUserChange, onDateChange, onRefresh, onApplyScenario }: Props) {
   const maxDate = user.today < user.data_end ? user.today : user.data_end;
+  // A typed date outside the user's data stays in the field (so typing can continue) but is never loaded
+  const [draftDate, setDraftDate] = useState<string | null>(null);
+  const dateInvalid = draftDate !== null;
+
+  function changeDate(value: string) {
+    if (value && value >= user.data_start && value <= maxDate) {
+      setDraftDate(null);
+      onDateChange(value);
+    } else {
+      setDraftDate(value);
+    }
+  }
   const { label, Icon, className } = STATUS[status];
 
   return (
@@ -57,17 +69,27 @@ export function TopBar({ title, users, user, date, scenarios, status, onUserChan
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          Date
-          <input
-            type="date"
-            className="input"
-            value={date}
-            min={user.data_start}
-            max={maxDate}
-            onChange={(e) => e.target.value && onDateChange(e.target.value)}
-          />
-        </label>
+        <div className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Date
+            <input
+              type="date"
+              className="input"
+              value={draftDate ?? date}
+              min={user.data_start}
+              max={maxDate}
+              aria-invalid={dateInvalid}
+              aria-describedby={dateInvalid ? "date-range-hint" : undefined}
+              onChange={(e) => changeDate(e.target.value)}
+            />
+          </label>
+          {dateInvalid && (
+            // w-0 min-w-full: wraps to the field's width instead of widening the toolbar
+            <p id="date-range-hint" className="w-0 min-w-full text-xs text-negative">
+              Choose a date from {user.data_start} to {maxDate}.
+            </p>
+          )}
+        </div>
         <Button variant="outline" onClick={onRefresh} disabled={status === "loading"}>
           <RefreshCw aria-hidden />
           Refresh

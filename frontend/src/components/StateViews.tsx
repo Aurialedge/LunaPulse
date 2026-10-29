@@ -17,7 +17,7 @@ export function ErrorState({ error, onRetry }: { error: ApiError; onRetry?: () =
     <div role="alert" className="flex flex-wrap items-start gap-3 rounded-lg border border-negative/25 bg-negative/5 p-4 text-sm">
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-negative" aria-hidden />
       <div className="flex-1">
-        <p className="font-medium">Something went wrong</p>
+        <p className="font-medium">{error.code === "network_error" ? "Can't reach the server" : "Something went wrong"}</p>
         <p className="text-muted-foreground">{error.message}</p>
       </div>
       {onRetry && (

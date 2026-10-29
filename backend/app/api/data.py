@@ -189,7 +189,11 @@ def list_scenarios() -> list[ScenarioOut]:
 @router.post("/simulation/generate", response_model=GenerateOut)
 def generate_simulation(body: GenerateRequest, session: Session = Depends(get_db)) -> GenerateOut:
     user = get_user_or_404(session, body.user_id)
-    end_date = body.end_date or local_today(user.timezone)
+    today = local_today(user.timezone)
+    if body.end_date and body.end_date > today:
+        # Data after the user's today would leave no day the dashboard can select
+        raise ApiError(422, "date_in_future", f"end_date must be on or before the user's local today ({today}).")
+    end_date = body.end_date or today
     seed = DEFAULT_SEED if body.seed is None else body.seed
     return regenerate_user(session, body.user_id, body.scenario, seed, body.days, end_date)
 
@@ -213,6 +217,8 @@ def add_note(user_id: str, body: NoteIn, session: Session = Depends(get_db)) -> 
     user = get_user_or_404(session, user_id)
     if body.date > local_today(user.timezone):
         raise ApiError(422, "date_in_future", "Notes cannot be added for a future date.")
+    if body.date < user.data_start:
+        raise ApiError(422, "date_out_of_range", f"Notes must be on or after the user's first day of data ({user.data_start}).")
     note = Note(user_id=user_id, date=body.date, text=body.text)
     session.add(note)
     session.commit()

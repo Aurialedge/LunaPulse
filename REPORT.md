@@ -8,8 +8,8 @@ LunaPulse turns simulated wearable readings into **at most three daily insights*
 
 | Result | |
 |---|---|
-| Backend tests | **191 passed** (142 unit, 49 API integration), Gemini always mocked |
-| Frontend tests | **100 passed** (Vitest + React Testing Library, incl. a WCAG contrast check of the design tokens) |
+| Backend tests | **193 passed** (142 unit, 51 API integration), Gemini always mocked |
+| Frontend tests | **106 passed** (Vitest + React Testing Library, incl. a WCAG contrast check of the design tokens) |
 | End-to-end tests | **10 passed** (Playwright, real backend in fallback mode, real UI, incl. the evidence → correction → update flow and a 390 px mobile check), stable over repeated runs |
 | Live Gemini | full tool loop verified with a real key: tool call → grounded JSON → validated → stored (§7) |
 | Type-check / lint / build | clean |
@@ -119,7 +119,7 @@ All suites run without a Gemini key. Gemini is replaced by scripted fakes ([`tes
 |---|---|---|
 | `backend/tests/unit` (simulation 21, observations 13, baselines 14, candidates 42, ranking 10, evidence 10, tools 5, explanations 27) | 142 | ✅ pass |
 | `backend/tests/integration` (data API 18, analytics API 31) | 49 | ✅ pass |
-| `frontend/src/**/*.test.ts(x)` (client 4, ui 4, contrast 9, components 49, data editor 16, App 18) | 100 | ✅ pass |
+| `frontend/src/**/*.test.ts(x)` (client 6, ui 4, contrast 9, components 52, data editor 16, App 19) | 106 | ✅ pass |
 | `frontend/e2e` (Playwright, real backend + UI) | 10 | ✅ pass, repeated runs |
 
 ### PRD §15 checklist

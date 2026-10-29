@@ -166,3 +166,14 @@ The palette's own colours are unchanged, but text on tinted or grey surfaces use
 
 ## D38. Insights and Trends are pages *(user)*
 The sidebar's Insights and Trends items used to scroll to sections of the overview. Those sections sit close together near the bottom, so both links landed on almost the same view. Now each is its own page: **Overview** shows every panel, **Trends** only the chart, and **Insights** only the feed and notes. The sidebar highlights the current page. Panels stay mounted and are only hidden, so a running recalculation survives a page switch.
+
+## D39. Hardening against hostile input
+An adversarial pass sent ~130 malformed, extreme and concurrent requests to the API and tried to break the UI. Nothing crashed. These gaps were closed:
+- **Simulation `end_date`** can't be after the user's local today (`422 date_in_future`). Data that starts after "today" left the user with no selectable day.
+- **Request bodies** over 64 KB are refused with `413 payload_too_large` before they're read. The largest real body, a full batch, is about 10 KB.
+- **Correction values** must be JSON numbers (`strict`): `"8000"` and `true` are rejected instead of being coerced. Steps are still rounded to whole numbers.
+- **Notes** can't be dated before the user's first day of data, and can't contain control characters (newlines and tabs are allowed).
+- **Batch errors** name the metric as the UI does ("2026-06-30: Sleep must be…").
+- **Date picker:** a typed date outside the data range stays in the field with a hint and isn't loaded.
+- **Long notes** wrap instead of widening the page.
+- **Unreachable backend** reads "Can't reach the server". The dev proxy answers a bare 5xx, and the backend's own errors are always JSON.

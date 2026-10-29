@@ -2,6 +2,7 @@
 
 import datetime as dt
 from datetime import date, datetime
+import unicodedata
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -102,6 +103,8 @@ class NoteIn(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("note text must not be blank")
+        if any(unicodedata.category(c) == "Cc" and c not in "\n\r\t" for c in value):
+            raise ValueError("note text must not contain control characters")
         return value
 
 
@@ -254,7 +257,8 @@ class FeedbackOut(BaseModel):
 class CorrectionIn(BaseModel):
     date: date
     metric: Literal["steps", "sleep_hours", "resting_heart_rate_bpm", "hrv_ms"]
-    value: float = Field(allow_inf_nan=False)  # JSON NaN / Infinity are rejected with 422, not a crash
+    # strict: a JSON number only (no "8000" strings, no true -> 1); NaN / Infinity are rejected with 422, not a crash
+    value: float = Field(allow_inf_nan=False, strict=True)
 
 
 class CorrectionOut(BaseModel):

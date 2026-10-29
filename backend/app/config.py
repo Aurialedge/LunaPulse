@@ -84,6 +84,8 @@ TOOL_MAX_RANGE_DAYS = 90
 
 # Data editor: most corrections one batch may save (28 days x 4 metrics) (D29)
 MAX_BATCH_CORRECTIONS = 112
+# The largest request body the API reads; the biggest real one (a full batch) is about 10 KB
+MAX_REQUEST_BYTES = 64 * 1024
 
 # Goal rings in the UI: progress towards the user's own goal, capped (D31)
 GOAL_PROGRESS_CAP = 100.0

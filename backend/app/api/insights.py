@@ -245,18 +245,17 @@ def add_corrections_batch(user_id: str, body: BatchCorrectionIn, session: Sessio
     seen: set[tuple[date, str]] = set()
     readings = []
     for item in body.corrections:
-        where = f"{item.date} {item.metric}"
+        metric = METRICS[item.metric]
         if (item.date, item.metric) in seen:
-            raise ApiError(422, "invalid_value", f"{where}: the same value is edited twice in one batch.")
+            raise ApiError(422, "invalid_value", f"{item.date}: {metric.label} is edited twice in one batch.")
         seen.add((item.date, item.metric))
         if not user.data_start <= item.date <= user.data_end:
-            raise ApiError(422, "invalid_value", f"{where}: date must be between {user.data_start} and {user.data_end}.")
-        metric = METRICS[item.metric]
+            raise ApiError(422, "invalid_value", f"{item.date}: date must be between {user.data_start} and {user.data_end}.")
         value = float(round(item.value)) if item.metric == "steps" else item.value
         if not is_valid_reading(ReadingData(item.date, item.metric, value, metric.unit)):
             raise ApiError(
                 422, "invalid_value",
-                f"{where}: {metric.label} must be between {metric.min_value:g} and {metric.max_value:g} {metric.unit}.",
+                f"{item.date}: {metric.label} must be between {metric.min_value:g} and {metric.max_value:g} {metric.unit}.",
             )
         readings.append(Reading(
             user_id=user_id, date=item.date, metric=item.metric, value=value, unit=metric.unit,
