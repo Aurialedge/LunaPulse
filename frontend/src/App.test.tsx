@@ -19,7 +19,7 @@ beforeEach(() => {
 describe("App", () => {
   it("renders the branded dashboard from backend responses", async () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: "PulseLens" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "LunaPulse" })).toBeInTheDocument();
     expect(screen.getByText("Your wearable data, explained with evidence.")).toBeInTheDocument();
     expect(screen.getByText(/All data is synthetic/)).toBeInTheDocument();
 
@@ -74,9 +74,9 @@ describe("App", () => {
   });
 
   it("shows an error state when the API is down", async () => {
-    vi.spyOn(api, "users").mockRejectedValue(new ApiError(0, "network_error", "Could not reach the PulseLens API."));
+    vi.spyOn(api, "users").mockRejectedValue(new ApiError(0, "network_error", "Could not reach the LunaPulse API."));
     render(<App />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Could not reach the PulseLens API.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not reach the LunaPulse API.");
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });

@@ -37,7 +37,7 @@ from app.metrics import METRIC_ORDER
 from app.observations import DailyObservation
 from app.tools import calculate_personal_baseline, check_data_completeness, get_metric_history
 
-logger = logging.getLogger("pulselens")
+logger = logging.getLogger("lunapulse")
 
 
 # --- output schema ---
@@ -80,7 +80,7 @@ ALLOWED_DISCLAIMERS = re.compile(
     r"not (?:a )?(?:medical )?diagnos\w*|does not show that one caused the other|not medical advice"
 )
 
-SYSTEM_PROMPT = f"""You explain wearable-data insights for PulseLens, a research demo that uses synthetic data.
+SYSTEM_PROMPT = f"""You explain wearable-data insights for LunaPulse, a research demo that uses synthetic data.
 
 Rules:
 - The insights were already selected and ranked by deterministic code. Explain each one. Do not add, reorder or

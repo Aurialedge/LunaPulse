@@ -35,7 +35,7 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - `observations.build_observations` takes ORM `Reading`s or `ReadingData` (duck-typed `ReadingLike`). Analytics should consume `DailyObservation`s, never raw readings.
 - Windows needs the `tzdata` package for `zoneinfo` (in requirements.txt).
 - Corrections endpoint (D18) and run staleness are Phase 3; `regenerate_user` in `app/api/data.py` is where Phase 3 must also mark the user's runs stale (D1).
-- Local DB file `backend/pulselens.db` is gitignored; delete it to reseed.
+- Local DB file `backend/lunapulse.db` is gitignored; delete it to reseed.
 - Gemini: key in `backend/.env` verified on 2026-10-29 (Google accepts it). Default model is `gemini-3.5-flash` (3.8/3.7/flash-latest gave 503/504 on 2026-10-29; see D2). Any model can return 503 "high demand", which Phase 3 must treat as fallback (never surface the provider error).
 - Phase 2: `generate_candidates(observations, target_date, Goals)` → `rank_candidates(candidates, previously_surfaced)` → `build_evidence(candidate, user_id, observations, id_prefix)` + `confidence_label(candidate)`. Phase 3's pipeline chains exactly these. Pass observations that extend past the target day if they exist: the spike rule looks at t+1 (D16).
 - Tool functions in `app/tools.py` take `(observations, target_date, ...)`. Phase 3 binds the current user's observations and target date, and exposes only the remaining arguments to Gemini.
@@ -48,4 +48,4 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - jsdom can't type into `<input type="date">`; use `fireEvent.change`. Recharts needs the ResizeObserver stub in `src/test/setup.ts`.
 - Vite hot reload can reset the selected user to User A. Re-select the user before a manual demo action.
 - Playwright MCP screenshots go to `.playwright-mcp/` (gitignored).
-
+- Project renamed PulseLens → LunaPulse on 2026-10-29 (D27). Repo: https://github.com/Aurialedge/LunaPulse (the old Aurialedge/Noise repo was deleted). `PRD.md` keeps the original name on purpose.

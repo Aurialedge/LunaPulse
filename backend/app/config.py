@@ -86,7 +86,7 @@ TOOL_MAX_RANGE_DAYS = 90
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
-    database_url: str = f"sqlite:///{(BACKEND_DIR / 'pulselens.db').as_posix()}"
+    database_url: str = f"sqlite:///{(BACKEND_DIR / 'lunapulse.db').as_posix()}"
     gemini_api_key: SecretStr = SecretStr("")
     gemini_model: str = "gemini-3.5-flash"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]

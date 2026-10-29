@@ -1,10 +1,10 @@
-# AGENTS.md — PulseLens
+# AGENTS.md — LunaPulse
 
 Instructions for any coding agent (Claude Code, Codex, etc.) working in this repo.
 
 ## What this is
 
-**PulseLens** — "Your wearable data, explained with evidence." A research/demo prototype that simulates wearable data (steps, sleep, RHR, HRV), computes personal baselines, detects deviations and trends with deterministic rules, ranks candidate insights, stores structured evidence, and asks Gemini to *explain* (never compute) the top ≤3 insights. Gemini can call read-only grounding tools. A template fallback is used when Gemini is unavailable. Users can dismiss insights, correct a value, and add notes, and notes are treated as untrusted. **All data is synthetic. Nothing here is medical advice.**
+**LunaPulse** — "Your wearable data, explained with evidence." A research/demo prototype that simulates wearable data (steps, sleep, RHR, HRV), computes personal baselines, detects deviations and trends with deterministic rules, ranks candidate insights, stores structured evidence, and asks Gemini to *explain* (never compute) the top ≤3 insights. Gemini can call read-only grounding tools. A template fallback is used when Gemini is unavailable. Users can dismiss insights, correct a value, and add notes, and notes are treated as untrusted. **All data is synthetic. Nothing here is medical advice.**
 
 ## Read before working
 

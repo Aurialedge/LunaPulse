@@ -36,7 +36,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       headers: init?.body ? { "Content-Type": "application/json" } : undefined,
     });
   } catch {
-    throw new ApiError(0, "network_error", "Could not reach the PulseLens API. Is the backend running?");
+    throw new ApiError(0, "network_error", "Could not reach the LunaPulse API. Is the backend running?");
   }
   if (!response.ok) {
     let code = "http_error";

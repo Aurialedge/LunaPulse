@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-logger = logging.getLogger("pulselens")
+logger = logging.getLogger("lunapulse")
 
 
 class ApiError(Exception):

@@ -1,4 +1,4 @@
-"""PulseLens API. Research/demo prototype on synthetic data — not medical advice."""
+"""LunaPulse API. Research/demo prototype on synthetic data — not medical advice."""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -27,7 +27,7 @@ def create_app(settings: Settings | None = None, seed_users: bool = True) -> Fas
         engine.dispose()
 
     app = FastAPI(
-        title="PulseLens API",
+        title="LunaPulse API",
         description="Your wearable data, explained with evidence. Synthetic data only; not medical advice.",
         version="0.1.0",
         lifespan=lifespan,

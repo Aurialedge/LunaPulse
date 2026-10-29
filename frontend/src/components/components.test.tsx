@@ -191,10 +191,10 @@ describe("InsightFeed", () => {
 
   it("shows API errors with a retry", async () => {
     const load = vi.spyOn(api, "feed")
-      .mockRejectedValueOnce(new ApiError(0, "network_error", "Could not reach the PulseLens API."))
+      .mockRejectedValueOnce(new ApiError(0, "network_error", "Could not reach the LunaPulse API."))
       .mockResolvedValue(feed);
     render(<InsightFeed userId="user_a" date="2026-06-30" version={0} />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Could not reach the PulseLens API.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not reach the LunaPulse API.");
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findAllByTestId("insight-card")).toHaveLength(1);
     expect(load).toHaveBeenCalledTimes(2);

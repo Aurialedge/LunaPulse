@@ -10,7 +10,7 @@ export function Header({ health }: { health: Health | null }) {
             <Activity className="size-5" aria-hidden />
           </span>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">PulseLens</h1>
+            <h1 className="text-xl font-semibold tracking-tight">LunaPulse</h1>
             <p className="text-sm text-slate-600">Your wearable data, explained with evidence.</p>
           </div>
         </div>
