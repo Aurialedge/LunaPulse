@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "eslint .",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "demo:video": "playwright test -c playwright.demo.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.1.13",

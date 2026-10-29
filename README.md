@@ -171,6 +171,17 @@ Errors always look like `{"error": {"code", "message"}}`, with no stack traces o
 
 ## Demo video script (≈ 3 minutes)
 
+A recorded version is in [`docs/demo/lunapulse-demo.webm`](docs/demo/lunapulse-demo.webm) (≈ 2.5 min, captions instead of narration). It's recorded with Playwright on a temporary database, and you can record it again at any time:
+
+```bash
+cd frontend
+npm run demo:video                     # template explanations
+DEMO_LLM=gemini npm run demo:video     # Gemini explanations, using the key in backend/.env
+# PowerShell: $env:DEMO_LLM="gemini"; npm run demo:video
+```
+
+The steps below are the script for recording it by hand, with narration.
+
 1. **Intro (15 s):** open http://localhost:5173. Point out the sidebar, the synthetic-data notice, and "Explanations: Gemini (validated)" in the sidebar footer.
 2. **Daily feed (45 s):** select **User B** (scenario `reduced_sleep`) in the top bar and press **Generate insights**. Show the ranked cards: headline, explanation, confidence, the "Explained by Gemini" badge, and "All candidates considered" (the sleep trend suppressed as redundant).
 3. **Evidence (40 s):** click **Why am I seeing this?** on the sleep card. The drawer shows the day's value, the 28-day median, the difference, the robust z, the rule and threshold, the supporting days (target day highlighted), and why it ranked #1. Close it, then switch the trends chart to **Sleep** to see the drop against the dashed baseline line.
