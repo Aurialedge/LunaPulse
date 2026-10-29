@@ -179,11 +179,11 @@ Errors always look like `{"error": {"code", "message"}}`, with no stack traces o
 
 ## Demo video script (≈ 3 minutes)
 
-A recorded version is in [`docs/demo/lunapulse-demo.webm`](docs/demo/lunapulse-demo.webm) (≈ 2.5 min, captions instead of narration). It's recorded with Playwright on a temporary database, and you can record it again at any time:
+A recorded version is in [`docs/demo/lunapulse-demo.mp4`](docs/demo/lunapulse-demo.mp4) (≈ 4 min, spoken voice-over plus captions). It's recorded with Playwright on a temporary database, and you can record it again at any time:
 
 ```bash
 cd frontend
-npm run demo:video                     # template explanations
+npm run demo:video                     # template explanations; narrated MP4 if ELEVENLABS_API_KEY is in backend/.env and ffmpeg is installed (or FFMPEG_PATH is set)
 DEMO_LLM=gemini npm run demo:video     # Gemini explanations, using the key in backend/.env
 # PowerShell: $env:DEMO_LLM="gemini"; npm run demo:video
 ```
