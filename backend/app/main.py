@@ -6,10 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import data
+from app.api import data, insights
 from app.api.errors import register_error_handlers
 from app.config import Settings
 from app.db import init_db, make_engine, make_session_factory
+from app.pipeline import gemini_chat_factory
 
 
 def create_app(settings: Settings | None = None, seed_users: bool = True) -> FastAPI:
@@ -33,11 +34,14 @@ def create_app(settings: Settings | None = None, seed_users: bool = True) -> Fas
     )
     app.state.settings = settings
     app.state.session_factory = make_session_factory(engine)
+    # None = fallback mode. Tests replace this with a scripted fake; the real key never leaves the backend.
+    app.state.chat_factory = gemini_chat_factory(settings)
     app.add_middleware(
         CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"], allow_headers=["*"]
     )
     register_error_handlers(app)
     app.include_router(data.router)
+    app.include_router(insights.router)
     return app
 
 

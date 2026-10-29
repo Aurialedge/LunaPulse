@@ -1,6 +1,8 @@
 """Pydantic request/response models for /api/v1. Mirrored by frontend/src/api/types.ts."""
 
+import datetime as dt
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -109,3 +111,155 @@ class NoteOut(BaseModel):
     date: date
     text: str
     created_at: datetime
+
+
+# --- analytics ---
+
+
+class MetricBaselineOut(BaseModel):
+    metric: str
+    label: str
+    unit: str
+    observed_value: float | None
+    target_flags: list[str]
+    status: str  # ok | insufficient
+    valid_observation_count: int
+    window_days: int
+    window_start: date
+    window_end: date
+    mean: float | None
+    median: float | None
+    std: float | None
+    mad: float | None
+    latest_value: float | None
+    latest_date: date | None
+    absolute_difference: float | None
+    percentage_difference: float | None
+    standardized_score: float | None
+    score_method: str | None
+    direction: str
+    interpretation: str
+    day_over_day: float | None
+    week_over_week: float | None
+
+
+class BaselinesOut(BaseModel):
+    user_id: str
+    date: date
+    metrics: list[MetricBaselineOut]
+
+
+class GenerateInsightsRequest(BaseModel):
+    date: dt.date | None = None  # defaults to the user's latest day with data (never after their local today)
+    force: bool = False
+
+
+class ExplanationSchema(BaseModel):
+    insight_id: str
+    title: str
+    summary: str
+    what_changed: str
+    why_it_matters: str
+    evidence_ids: list[str]
+    possible_context: str
+    limitations: list[str]
+    suggested_reflection: str
+
+
+class InsightOut(BaseModel):
+    insight_id: str
+    run_id: str
+    user_id: str
+    target_date: date
+    rank: int
+    category: str
+    metrics: list[str]
+    direction: str
+    rule_id: str
+    score: float
+    score_components: dict[str, float]
+    confidence_label: str  # deterministic (D9)
+    explanation: ExplanationSchema
+    explanation_provider: str  # gemini | fallback
+    evidence_ids: list[str]
+    feedback: str | None  # latest feedback action, if any
+    is_stale: bool
+
+
+class CandidateOut(BaseModel):
+    candidate_id: str
+    category: str
+    metrics: list[str]
+    direction: str
+    rule_id: str
+    score: float
+    status: str  # selected | suppressed_redundant | below_limit | dropped_by_llm
+    rank: int | None
+    insight_id: str | None
+    drop_reason: str | None
+
+
+class FeedOut(BaseModel):
+    run_id: str
+    user_id: str
+    target_date: date
+    rule_version: str
+    generated_at: datetime
+    provider: str  # gemini | fallback | mixed | none
+    fallback_reason: str | None
+    insights: list[InsightOut]
+    hidden_count: int
+    candidates: list[CandidateOut]
+
+
+class EvidenceOut(BaseModel):
+    evidence_id: str
+    insight_id: str
+    user_id: str
+    metric: str
+    target_date: date
+    comparison: str
+    observed_value: float | None
+    observed_unit: str
+    baseline_value: float | None
+    baseline_method: str
+    baseline_window_start: date
+    baseline_window_end: date
+    valid_observation_count: int
+    absolute_difference: float | None
+    percentage_difference: float | None
+    standardized_score: float | None
+    score_method: str | None
+    direction: str
+    rule_id: str
+    rule_threshold: str
+    supporting_observation_dates: list[date]
+    supporting_observation_values: list[float]
+    data_quality_flags: list[str]
+
+
+class FeedbackIn(BaseModel):
+    action: Literal["dismissed", "irrelevant"]
+
+
+class FeedbackOut(BaseModel):
+    id: int
+    insight_id: str
+    action: str
+    created_at: datetime
+
+
+class CorrectionIn(BaseModel):
+    date: date
+    metric: Literal["steps", "sleep_hours", "resting_heart_rate_bpm", "hrv_ms"]
+    value: float
+
+
+class CorrectionOut(BaseModel):
+    user_id: str
+    date: date
+    metric: str
+    value: float
+    unit: str
+    stale_run_count: int
+    feed: FeedOut  # the regenerated feed for the corrected date

@@ -88,9 +88,22 @@ class Settings(BaseSettings):
 
     database_url: str = f"sqlite:///{(BACKEND_DIR / 'pulselens.db').as_posix()}"
     gemini_api_key: SecretStr = SecretStr("")
-    gemini_model: str = "gemini-3.8-flash"
+    gemini_model: str = "gemini-3.5-flash"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     @property
     def llm_mode(self) -> str:
         return "gemini" if self.gemini_api_key.get_secret_value().strip() else "fallback"
+
+# LLM explanation service (D10, D13)
+LLM_MAX_TOOL_ROUNDS = 4
+LLM_TIMEOUT_SECONDS = 45
+# Transport retries for transient provider errors (separate from the single correction retry for invalid answers)
+LLM_TRANSPORT_ATTEMPTS = 3
+LLM_RETRY_STATUS_CODES = [429, 500, 503, 504]
+LLM_TEMPERATURE = 0.2
+# A number in the LLM's text matches an allowed number if it is within this relative tolerance (or 0.05 absolute)
+LLM_NUMBER_REL_TOLERANCE = 0.01
+LLM_NUMBER_ABS_TOLERANCE = 0.05
+# Small whole numbers (day counts such as "3 days" or "7-day") are always allowed
+LLM_ALLOWED_SMALL_INTEGERS = range(0, 8)

@@ -20,7 +20,7 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - [x] Phase 0 — planning & scaffold (incl. Task 3 integration)
 - [x] Phase 1 — backend foundation & data (52 tests: 34 unit, 18 integration)
 - [x] Phase 2 — analytics engine (133 backend tests total)
-- [ ] Phase 3 — LLM, pipeline & analytics API
+- [x] Phase 3 — LLM, pipeline & analytics API (181 backend tests; real Gemini verified end to end)
 - [ ] Phase 4 — frontend dashboard
 - [ ] Phase 5 — e2e & docs
 
@@ -36,9 +36,12 @@ Requirements: `PRD.md` Part A (PRD) + Part B (Intern Hiring Task 3). Conflicts r
 - Windows needs the `tzdata` package for `zoneinfo` (in requirements.txt).
 - Corrections endpoint (D18) and run staleness are Phase 3; `regenerate_user` in `app/api/data.py` is where Phase 3 must also mark the user's runs stale (D1).
 - Local DB file `backend/pulselens.db` is gitignored; delete it to reseed.
-- Gemini: key in `backend/.env` verified on 2026-10-29 (Google accepts it). Default model is `gemini-3.8-flash`; it sometimes returns 503 "high demand", which Phase 3 must treat as fallback (never surface the provider error).
+- Gemini: key in `backend/.env` verified on 2026-10-29 (Google accepts it). Default model is `gemini-3.5-flash` (3.8/3.7/flash-latest gave 503/504 on 2026-10-29; see D2). Any model can return 503 "high demand", which Phase 3 must treat as fallback (never surface the provider error).
 - Phase 2: `generate_candidates(observations, target_date, Goals)` → `rank_candidates(candidates, previously_surfaced)` → `build_evidence(candidate, user_id, observations, id_prefix)` + `confidence_label(candidate)`. Phase 3's pipeline chains exactly these. Pass observations that extend past the target day if they exist: the spike rule looks at t+1 (D16).
 - Tool functions in `app/tools.py` take `(observations, target_date, ...)`. Phase 3 binds the current user's observations and target date, and exposes only the remaining arguments to Gemini.
 - Combined insights never appear from a single built-in scenario (each changes one metric). They're covered by unit tests with hand-made data.
 - Test helper `tests/unit/factory.py::make_observations` builds hand-made series (offsets are days before the end date).
+- Phase 3: `app.state.chat_factory` is None in fallback mode; tests set it to `tests/fakes.py` (`ScriptedChat` for exact turns, `PayloadAwareChat` for answers built from the payload). The real `GeminiChat` is checked by hand, never in pytest.
+- A real Gemini generation takes 15–35 s (tool round plus answer) and `gemini-3.5-flash` still returns 503 sometimes. The UI needs a clear "generating…" state, and a fallback result is normal, not an error.
+- `google-genai` upgraded to 2.30.0 (1.14 lacked `parameters_json_schema`/retry options). Run `pip install -r requirements.txt` after pulling.
 

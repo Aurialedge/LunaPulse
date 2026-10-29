@@ -5,8 +5,8 @@ Choices the requirements (`PRD.md` Part A = PRD, Part B = Task 3) left open, and
 ## D1. Scenarios are injected into one of the four base users *(user)*
 `POST /simulation/generate {user_id, scenario, seed?, days?, end_date?}` regenerates that user's full history from their base profile and the seed, then applies the scenario to the most recent days. Only users A–D exist. All of the user's insight runs are marked stale. — Keeps the user list small and the demo natural: pick a user, inject an anomaly, generate insights.
 
-## D2. Gemini `gemini-3.8-flash` via the official `google-genai` SDK *(user)*
-Set with the `GEMINI_MODEL` env var. Originally `gemini-2.5-flash`; changed on 2026-10-29 because Google no longer offers that model to new users (404 for this key). The user delegated the choice; `gemini-3.8-flash` is the replacement Google's error names. Uses structured JSON output validated by Pydantic. Without a key, the app runs in fallback mode.
+## D2. Gemini `gemini-3.5-flash` via the official `google-genai` SDK (2.30) *(user)*
+Set with the `GEMINI_MODEL` env var. Originally `gemini-2.5-flash`, which Google no longer offers to new users (404 for this key). The user delegated the choice. On 2026-10-29 `gemini-3.8-flash`, `gemini-3.7-flash` and `gemini-flash-latest` repeatedly returned 503/504 ("high demand"), while `gemini-3.5-flash` completed a full function-calling round trip with JSON output, so it is the default. Uses structured JSON output validated by Pydantic. Without a key, the app runs in fallback mode.
 
 ## D3. No Docker *(user)*
 Dropped to fit the Part B scope into the time budget. The PRD only asks for Docker "where practical". Local commands are documented in the README.
@@ -45,7 +45,7 @@ Every number in the LLM's text must match an allowed value within a small tolera
 ## D11. Idempotent generation; staleness instead of duplicates
 A run is identified by `(user_id, target_date, rule_version)` among non-stale runs. `POST …/insights/generate` returns the existing non-stale run unless `{"force": true}` is passed, in which case the old run is marked stale and a new one created. Stale runs are kept for provenance but never returned by the feed. Runs are marked stale when:
 - the user's data is regenerated (all runs), or
-- a correction changes date `d`: runs with `target_date ∈ [d, d+34]` (every run whose deviation, trend, or recent window contains `d`).
+- a correction changes date `d`: runs with `target_date ∈ [d-1, d+34]` (every run whose deviation, trend, or recent window contains `d`, plus `d-1`, whose spike check looks at the next day).
 
 — PRD §13; Part B §5 "do not keep showing an outdated insight".
 
@@ -103,3 +103,13 @@ When the database is empty, users A–D are seeded with seed 42, 120 days ending
 - **Evidence ids:** `<id_prefix>-ev<n>`. The pipeline passes the insight id as the prefix, so ids are unique per run.
 - **Tools:** bad arguments return `{"error": ...}` instead of raising, so the model gets an answer it can act on.
 - **User C:** goal raised to 10,000 steps (starting steps 5,500). That way its `gradual_trend` is an `improving_trend` (gap to goal shrinks by more than the threshold), while Users A and B show the same scenario as a neutral `trend`.
+
+## D25. Explanation service details
+- **Transport vs. correction retries:** transient provider errors (429/500/503/504) are retried by the SDK, up to 3 attempts. That is separate from PRD §9's single correction retry for an invalid answer. The correction retry asks only about the insights that failed and keeps the ones that already passed.
+- **Tool use:** the prompt asks Gemini to verify with at least one tool call before answering. Tool calls are logged on the run (`insight_runs.tool_calls`, documented arguments only).
+- **Unsafe wording:** the validator rejects diagnosis, treatment/medication/supplement, risk and causal phrases ("caused by", "led to", …). Explicit disclaimers ("not a diagnosis", "not medical advice") are allowed.
+- **Allowed numbers (D10):** also include the integers 0–7 (day counts) and the window constants 14 and 28. The tolerance is 1% relative, or 0.05 absolute.
+- **`fallback_reason`:** one of `no_api_key`, `provider_error` (SDK error or timeout), `invalid_response` (no parseable JSON in either attempt), `validation_failed` (unsupported numbers, unknown ids, unsafe wording, or a missing insight after the retry).
+- **Dropped insights:** stored only in the run's `candidates` (`status: dropped_by_llm`, `drop_reason`), never as insight rows. Remaining insights keep their deterministic rank.
+- **Defaults and limits:** the feed, baselines, and generate endpoints default to the user's latest data day (never after their local today) and reject dates outside the user's data range (`422 date_out_of_range`).
+

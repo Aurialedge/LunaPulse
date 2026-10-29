@@ -17,6 +17,7 @@ from app.config import (
 from app.db import get_db
 from app.models import Note, Reading, User
 from app.observations import build_observations
+from app.pipeline import mark_runs_stale
 from app.schemas import (
     GenerateOut,
     GenerateRequest,
@@ -46,6 +47,7 @@ def regenerate_user(
     profile = PROFILES[user_id]
     data = simulate_user(profile, scenario, seed, days, end_date)
 
+    mark_runs_stale(session, user_id)  # every insight for this user is now outdated (D1, D11)
     session.execute(delete(Reading).where(Reading.user_id == user_id))
     session.execute(delete(Note).where(Note.user_id == user_id))
     user = session.get(User, user_id) or User(user_id=user_id)
